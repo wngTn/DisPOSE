@@ -1,0 +1,109 @@
+_target_: src.models.dispose_module.DisPOSE
+
+# Joint training of assignment + regressor on top of a frozen, panoptic-adapted backbone.
+# Both downstream modules start from random init; the backbone provides BN-adapted features
+# and is held in eval mode for the duration (see freeze: ["backbone"] below).
+defaults:
+  - /model/Backbone@backbone: ResNet
+  - /model/Assignment@assignment: HGDiffusion
+  - /model/Regression@regressor: Graph
+  - _self_
+
+# warmup_steps lives in the dataset config — datasets vary between from-scratch
+# (1000) and warm-start (500) schedules.
+camera_setup: "${camera_setup}"
+
+# Backbone stays frozen: it preserves the dataset-adapted BN running stats and provides a
+# fixed feature distribution for the assignment net / regressor. Unfreezing the backbone was
+# found to be unstable on this pipeline. (dispose_module.py still supports freeze_bn_running_stats
+# and param_group_lr for future experiments.)
+freeze: ["backbone"]
+
+# Cosine annealing of LR from peak to ~0 over the full training window. The
+# peak `optimizer.lr` is the same across datasets (warm-start at the lower 1e-4
+# was observed to slow convergence). `scheduler.T_max` lives in the dataset
+# config because it varies with from-scratch vs warm-start step counts.
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: True
+  lr: 3.0e-4
+  weight_decay: 0.0
+  betas: [0.9, 0.999]
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+  _partial_: True
+  eta_min: 1.0e-6
+
+# Metrics live in the dataset config (`configs/dataset/<x>.yaml`). Hydra composes
+# `dataset` BEFORE `task` in `configs/train.yaml`, so anything defined here would
+# clobber a dataset's per-task choice. See per-dataset configs for the actual
+# metric set (panoptic/mm_or: Root + Regression; shelf/campus: PCP only).
+
+# ------------------------------------------------------------------------------------------
+# Loss configuration. Three semantic groups:
+#   1. Backbone heatmap supervision (frozen weights but heatmap output is supervised).
+#   2. Assignment-net diffusion supervision (X_Loss / U_Loss in projected polytope coords).
+#   3. Regressor refined-stage supervision (4 deep-supervision stages × 4 loss families,
+#      plus a per-stage triangulation residual). The regressor's pre-refinement prior
+#      output isn't directly supervised — only the refined stages carry loss gradient.
+#
+# Anchors share the underlying loss-module config across stages without repetition; only the
+# per-stage λ is written explicitly so it remains tunable per stage. Loss-module names are
+# parsed by the aggregator at runtime — keep the `_0..3` suffixes for the refined stages.
+# ------------------------------------------------------------------------------------------
+losses:
+  _target_: src.losses.loss.Loss
+  # Network input size; recovers the dataset's original camera resolution for the
+  # reprojection in-bounds check in process_pseudo_2d (regressor supervision).
+  image_size: "${data.train_cfg.dataset.image_size}"
+  cfg:
+    # --- 1. Backbone heatmap supervision ---------------------------------------------
+    Heatmap_Loss:
+      lambda: 1.0
+      type:
+        _target_: src.losses.HeatmapLoss
+        sigma: 3.0
+        image_size: "${data.train_cfg.dataset.image_size}"
+        heatmap_size: "${data.train_cfg.dataset.heatmap_size}"
+        bg_weight: 0.1                              # asymmetric MSE; see configs/model/Heatmap.yaml for the rationale
+
+    # --- 2. Assignment diffusion supervision -----------------------------------------
+    X_Loss: { lambda: 0.5,  type: { _target_: torch.nn.MSELoss } }
+    U_Loss: { lambda: 0.25, type: { _target_: torch.nn.MSELoss } }
+
+    # --- 3. Regressor refined-stage supervision (per-stage suffix expansion) ---------
+    # Each entry below is a *template* that BaseLosses expands to N per-stage entries
+    # (RefinedPseudoRegressionL1Loss → RefinedPseudoRegressionL1Loss_0 .. _3 etc.).
+    # Use `lambda` for uniform per-stage weight; use `lambdas` for varying weight.
+    # The regressor's prior-stage output (triangulation) is not directly supervised;
+    # only the 4 refinement stages get gradient.
+    RefinedPseudoRegressionL1Loss:
+      lambda: 1.0
+      n_stages: 4
+      type: { _target_: src.losses.PseudoRegressionL1Loss, gt_threshold: 0.3, conf_gamma: 1.0 }
+    RefinedPseudoRegressionL2Loss:
+      lambda: 100.0
+      n_stages: 4
+      type: { _target_: src.losses.PseudoRegressionL2Loss, gt_threshold: 0.3, conf_gamma: 1.0 }
+    # AnchorL1Loss: 3D L1 between the refined prediction and GT pose. Anchors the
+    # refined output to GT skeleton geometry while the reprojection losses shape it
+    # against per-view 2D evidence.
+    AnchorL1Loss:
+      lambda: 0.1
+      n_stages: 4
+      type: { _target_: src.losses.Pseudo3DRegressionL1Loss, gt_threshold: 0.3, conf_gamma: 1.0 }
+    RefinedPseudoRegressionCrossAffineL1Loss:
+      lambda: 1.0
+      n_stages: 4
+      type: { _target_: src.losses.PseudoRegressionCrossAffineL1Loss }
+    # Triangulation consistency residual — uniform 1e-4 across all 4 stages.
+    TriangulationResidualLoss:
+      lambda: 1.0e-4
+      n_stages: 4
+      type: { _target_: src.losses.TriangulationResidualLoss }
+
+# NOTE: space_configuration (space_size, space_center) is dataset-specific and
+# provided by configs/dataset/<dataset>.yaml. Do NOT set defaults here — this
+# file is composed *after* the dataset config (per train.yaml's defaults order),
+# and any value here would silently overwrite the dataset's setting.

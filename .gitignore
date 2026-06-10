@@ -1,0 +1,66 @@
+# Project
+visualization/
+preparation/**/*.jpg
+preparation/**/*.mp4
+notebooks/outputs
+debug/*
+tmp/*
+checkpoints/*
+output/
+output_old/
+
+# Model weights & data
+**/*.pth
+**/*.pt
+**/*.pkl
+*.h5
+
+# ...except the tiny canonical T-pose prior, a required fixed asset (see TPosePrior)
+!checkpoints/t_pose.pt
+*.tar
+*.tar.gz
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+
+# Environments
+.venv/
+.env
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+
+# Type checking
+.mypy_cache/
+.pyright/
+
+# Logs & data dirs
+/data/
+/logs/
+*.log
+
+# Jupyter
+.ipynb_checkpoints
+checkpoints/assignment_sota/
+checkpoints/backbone/panoptic/march_backbone.pt
+CLAUDE.md
+AGENTS.md
+/*.pdf
+.claude/
+
+# Release artifacts (pretrained-weight / pseudo-label zips for hosting)
+/release/

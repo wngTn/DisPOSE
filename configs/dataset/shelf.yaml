@@ -1,0 +1,60 @@
+# @package _global_
+
+defaults:
+  - /data: Shelf
+
+camera_setup: "Shelf5"
+
+# Shelf pose is warm-started from the fully-trained panoptic_pose weights
+# (assignment + regressor; the backbone stays the dataset-adapted one below).
+# Strip backbone.* from panoptic_pose `last.ckpt` and re-save here if you retrain
+# panoptic_pose. The 15k / 1e-4 / 500-warmup schedule is sized for fine-tuning.
+init_ckpt_path: "checkpoints/warmstart/panoptic_pose_no_backbone.pt"
+
+trainer:
+  max_steps: 15_000                              # warm-start schedule
+
+model:
+  warmup_steps: 500                              # shorter warmup; weights aren't random
+  scheduler:
+    T_max: 15_000                                # keep cosine in sync with trainer.max_steps
+
+  backbone:
+    # Fine-tuned from the panoptic pose backbone via `task=backbone dataset=shelf`
+    # (last.ckpt at step 20000, with heatmap-loss fix applied).
+    ckpt_path: "checkpoints/backbone/shelf/pose_resnet50.pt"
+
+  # Shelf is evaluated by PCP only. configs/model/Pose.yaml no longer defines
+  # default metrics — each dataset is fully in charge.
+  metric:
+    PCPMetrics:
+      _target_: src.metrics.PCPMetrics
+      skeleton_type: "shelf"
+      num_actors: 3
+
+  space_configuration:
+    space_size: [8000, 8000, 2000]
+    space_center: [450, -320, 800]
+
+data:
+  train_cfg:
+    batch_sampler:
+      batch_size: 2                              # per-GPU; bs=4 OOMs at ~44/44 GB on A6000 (same per-sample as panoptic)
+    dataset:
+      camera_setup: "${camera_setup}"
+      sequences: ["defalta"]
+
+  val_cfg:
+    dataset:
+      camera_setup: "${camera_setup}"
+      sequences: ["defalta"]
+
+logger:
+  tags: ["shelf"]
+
+# task=pose: select best by PCP. task=backbone: ignored (task config overrides
+# this to save_top_k=0 + save_last=true).
+callbacks:
+  model_checkpoint:
+    monitor: "val/PCPMetrics_Average"
+    filename: "best-pcp-step={step:06d}"

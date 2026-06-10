@@ -1,0 +1,16 @@
+model_checkpoint:
+  _target_: lightning.pytorch.callbacks.ModelCheckpoint
+  dirpath: ${paths.output_dir}/checkpoints
+  save_last: true
+  save_top_k: 1
+  auto_insert_metric_name: false
+  monitor: null
+  mode: "max"
+  filename: "best-{step:06d}"
+
+lr_monitor:
+  _target_: lightning.pytorch.callbacks.LearningRateMonitor
+  logging_interval: step
+
+rich_progress_bar:
+  _target_: src.callbacks.progress.SmartRichProgressBar

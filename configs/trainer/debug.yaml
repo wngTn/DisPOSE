@@ -1,0 +1,19 @@
+_target_: lightning.Trainer
+
+# Quick sanity check — runs 1 train + 1 val batch
+fast_dev_run: true
+
+# Hardware
+accelerator: auto
+devices: 1
+strategy: auto
+
+# No mixed precision for easier debugging
+precision: 32-true
+
+# Logging
+log_every_n_steps: 1
+enable_progress_bar: true
+
+# Output
+default_root_dir: ${paths.output_dir}

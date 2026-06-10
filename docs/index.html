@@ -1,0 +1,1697 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DisPOSE: Projected Polystochastic Diffusion</title>
+
+    <!-- Search engines -->
+    <meta name="description"
+        content="ICML 2026. Self-supervised multi-view 3D human pose estimation via projected diffusion on polystochastic tensors. New MM-OR Pose surgical benchmark." />
+    <meta name="keywords" content="3D human pose estimation, multi-view, self-supervised, diffusion, polystochastic tensors, ICML 2026, surgical scene understanding, MM-OR" />
+    <meta name="author" content="Tony Danjun Wang, Tolga Birdal, Nassir Navab, Lennart Bastian" />
+    <link rel="canonical" href="https://wngtn.github.io/DisPOSE/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="DisPOSE: Projected Polystochastic Diffusion (ICML 2026)" />
+    <meta property="og:description" content="Self-supervised multi-view 3D human pose via projected diffusion on polystochastic tensors. New MM-OR Pose surgical benchmark." />
+    <meta property="og:image" content="https://wngtn.github.io/DisPOSE/static/images/teaser.webp" />
+    <meta property="og:image:width" content="1920" />
+    <meta property="og:image:height" content="1152" />
+    <meta property="og:image:alt" content="DisPOSE teaser: a multi-view correspondence hypergraph denoised by projected diffusion into clean cross-view matches and 3D poses." />
+    <meta property="og:url" content="https://wngtn.github.io/DisPOSE/" />
+    <meta property="og:site_name" content="DisPOSE" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="DisPOSE: Projected Polystochastic Diffusion (ICML 2026)" />
+    <meta name="twitter:description" content="Self-supervised multi-view 3D human pose via projected diffusion on polystochastic tensors. New MM-OR Pose surgical benchmark." />
+    <meta name="twitter:image" content="https://wngtn.github.io/DisPOSE/static/images/teaser.webp" />
+    <meta name="twitter:image:alt" content="DisPOSE teaser: projected diffusion for self-supervised multi-view 3D pose." />
+
+    <!-- Schema.org structured data for Google Scholar / rich-results -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "ScholarlyArticle",
+      "headline": "DisPOSE: Projected Polystochastic Diffusion for Self-Supervised Multi-View 3D Human Pose Estimation",
+      "name": "DisPOSE: Projected Polystochastic Diffusion for Self-Supervised Multi-View 3D Human Pose Estimation",
+      "abstract": "Recovering 3D human poses for multiple individuals from different camera views is a fundamental bottleneck for analyzing interacting behaviors. We introduce DisPOSE, a self-supervised framework that approximates the inherently discrete multi-view person-assignment problem as a generative diffusion process over the space of polystochastic tensors, with differentiable Sinkhorn projections during denoising. We further introduce the MM-OR Pose benchmark for multi-view 3D pose in surgical operating rooms.",
+      "author": [
+        {"@type": "Person", "name": "Tony Danjun Wang", "url": "https://wngtn.github.io", "affiliation": [{"@type": "Organization", "name": "Technical University of Munich"}, {"@type": "Organization", "name": "Munich Center for Machine Learning"}]},
+        {"@type": "Person", "name": "Tolga Birdal", "url": "https://tolgabirdal.github.io", "affiliation": {"@type": "Organization", "name": "Imperial College London"}},
+        {"@type": "Person", "name": "Nassir Navab", "url": "https://www.professoren.tum.de/en/navab-nassir", "affiliation": [{"@type": "Organization", "name": "Technical University of Munich"}, {"@type": "Organization", "name": "Munich Center for Machine Learning"}]},
+        {"@type": "Person", "name": "Lennart Bastian", "url": "https://bastianlb.github.io", "affiliation": [{"@type": "Organization", "name": "Technical University of Munich"}, {"@type": "Organization", "name": "Munich Center for Machine Learning"}, {"@type": "Organization", "name": "Imperial College London"}]}
+      ],
+      "datePublished": "2026",
+      "publisher": {"@type": "Organization", "name": "PMLR"},
+      "isPartOf": {
+        "@type": "PublicationIssue",
+        "name": "Proceedings of the 43rd International Conference on Machine Learning",
+        "issueNumber": "306",
+        "publisher": {"@type": "Organization", "name": "PMLR"}
+      },
+      "url": "https://wngtn.github.io/DisPOSE/",
+      "image": "https://wngtn.github.io/DisPOSE/static/images/teaser.webp",
+      "codeRepository": "https://github.com/wngTn/DisPOSE",
+      "keywords": "3D human pose estimation, multi-view, self-supervised, diffusion, polystochastic tensors, hypergraph"
+    }
+    </script>
+
+    <link rel="icon" type="image/svg+xml" href="./static/images/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./static/images/favicon-32.png" />
+    <link rel="apple-touch-icon" href="./static/images/apple-touch-icon.png" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b1020" media="(prefers-color-scheme: dark)" />
+
+    <!-- Resource hints: warm the font CDN + preload the first large image (the
+         overview "method" figure) so the LCP paint isn't render-blocked. The
+         teaser video below streams via byte-range and shows its poster until played. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="image" href="./static/images/method.webp" fetchpriority="high" />
+
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+    <link rel="stylesheet" href="./static/css/blog.css?v=3" />
+</head>
+
+<body>
+
+    <!-- ===================== Navbar ===================== -->
+    <nav class="navbar" role="navigation" aria-label="main navigation">
+        <div class="navbar-inner">
+            <span class="navbar-brand">Dis<span class="brand-accent">POSE</span></span>
+            <div class="navbar-links">
+                <a href="#overview">Overview</a>
+                <a href="#contributions">Contributions</a>
+                <a href="#mm-or">MM-OR Pose</a>
+                <a href="#method">Method</a>
+                <a href="#results">Results</a>
+                <a href="#generalization">Generalization</a>
+                <a href="#limitations">Limitations</a>
+                <a href="#bibtex" class="always-show">BibTeX</a>
+                <button class="theme-toggle" id="theme-toggle" aria-label="Switch theme">
+                    <!-- moon icon (light theme) -->
+                    <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <!-- sun icon (dark theme) -->
+                    <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4"></circle>
+                        <path
+                            d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ===================== Hero ===================== -->
+    <header class="hero reveal">
+        <div class="container">
+            <span class="hero-eyebrow">ICML&nbsp;2026 &nbsp;·&nbsp; Self-Supervised 3D Pose Estimation</span>
+            <h1 class="hero-title">
+                <span class="title-main">Dis<span class="title-accent">POSE</span>: Projected Polystochastic Diffusion</span>
+                <span class="title-sub">for Self-Supervised Multi-View 3D Human Pose Estimation</span>
+            </h1>
+
+            <div class="authors-grid">
+                <div class="author-card">
+                    <a href="https://wngtn.github.io" target="_blank" rel="noopener noreferrer">
+                        <img loading="lazy" decoding="async" class="author-avatar" src="./static/images/authors/wang.jpg"
+                            alt="Tony Danjun Wang" />
+                    </a>
+                    <div class="author-name">
+                        <a href="https://wngtn.github.io" target="_blank" rel="noopener noreferrer">Tony Danjun
+                            Wang</a><sup>1,2</sup>
+                    </div>
+                </div>
+                <div class="author-card">
+                    <a href="https://tolgabirdal.github.io" target="_blank" rel="noopener noreferrer">
+                        <img loading="lazy" decoding="async" class="author-avatar" src="./static/images/authors/birdal.webp"
+                            alt="Tolga Birdal" />
+                    </a>
+                    <div class="author-name">
+                        <a href="https://tolgabirdal.github.io" target="_blank" rel="noopener noreferrer">Tolga
+                            Birdal</a><sup>3</sup>
+                    </div>
+                </div>
+                <div class="author-card">
+                    <a href="https://www.professoren.tum.de/en/navab-nassir" target="_blank" rel="noopener noreferrer">
+                        <img loading="lazy" decoding="async" class="author-avatar" src="./static/images/authors/navab.jpg"
+                            alt="Nassir Navab" />
+                    </a>
+                    <div class="author-name">
+                        <a href="https://www.professoren.tum.de/en/navab-nassir" target="_blank"
+                            rel="noopener noreferrer">Nassir Navab</a><sup>1,2</sup>
+                    </div>
+                </div>
+                <div class="author-card">
+                    <a href="https://bastianlb.github.io" target="_blank" rel="noopener noreferrer">
+                        <img loading="lazy" decoding="async" class="author-avatar" src="./static/images/authors/bastian.jpg"
+                            alt="Lennart Bastian" />
+                    </a>
+                    <div class="author-name">
+                        <a href="https://bastianlb.github.io" target="_blank" rel="noopener noreferrer">Lennart
+                            Bastian</a><sup>1,2,3</sup>
+                    </div>
+                </div>
+            </div>
+
+            <div class="affiliation-block">
+                <span><sup>1</sup>Technical University of Munich (TUM)</span>
+                <span class="affiliation-sep">&nbsp;·&nbsp;</span>
+                <span><sup>2</sup>Munich Center for Machine Learning (MCML)</span>
+                <span class="affiliation-sep">&nbsp;·&nbsp;</span>
+                <span><sup>3</sup>Imperial College London</span>
+            </div>
+
+            <div class="publication-links">
+                <a class="pub-btn" href="https://github.com/wngTn/DisPOSE" target="_blank" rel="noopener noreferrer">
+                    <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6 L4 12 L9 18" /><path
+                        d="M15 6 L20 12 L15 18" /></svg></span><span>Code</span>
+                </a>
+                <a class="pub-btn" href="https://arxiv.org/abs/2606.07419" target="_blank" rel="noopener noreferrer">
+                    <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3 H14 L19 8 V21 H7 Z" /><path
+                        d="M14 3 V8 H19" /></svg></span><span>Paper &amp; arXiv</span>
+                </a>
+            </div>
+
+            <div class="venue-badge">Proceedings of the 43<sup>rd</sup> ICML&nbsp;&middot;&nbsp;Seoul,&nbsp;2026</div>
+        </div>
+    </header>
+
+    <!-- ===================== Overview / At a glance ===================== -->
+    <section class="section reveal" id="overview">
+        <div class="container">
+            <div class="section-title-block">
+                <span class="hero-eyebrow">At a glance</span>
+                <h2>DisPOSE in a nutshell</h2>
+                <p>
+                    Multi-person 3D pose from several cameras, learned with no 3D ground truth.
+                </p>
+            </div>
+
+            <div class="contrib-grid">
+                <div class="contrib-card idea-card">
+                    <div class="contrib-card-header">
+                        <span class="contrib-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                stroke-linejoin="round" stroke-linecap="round">
+                                <circle cx="5" cy="12" r="2" />
+                                <circle cx="19" cy="6" r="2" />
+                                <circle cx="19" cy="18" r="2" />
+                                <path d="M7 12 L13 12 M13 12 L17.2 6.9 M13 12 L17.2 17.1" />
+                            </svg>
+                        </span>
+                    </div>
+                    <div class="contrib-title">1&nbsp;&middot;&nbsp;Disentangle assignment from regression</div>
+                    <p class="idea-punch">Match people first, <em>then</em> estimate their poses.</p>
+                    <ul class="idea-points">
+                        <li><strong>Who?</strong> link each person across views, triangulate the 3D root</li>
+                        <li><strong>Where?</strong> regress the full body on that root</li>
+                        <li><strong>Payoff:</strong> one model fits different camera rigs without fine-tuning</li>
+                    </ul>
+                </div>
+
+                <div class="contrib-card idea-card">
+                    <div class="contrib-card-header">
+                        <span class="contrib-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                stroke-linejoin="round" stroke-linecap="round">
+                                <path d="M3 9 C 7 3, 11 3, 13 7 S 19 11, 21 6" />
+                                <circle cx="4" cy="17.5" r="1.3" fill="currentColor" stroke="none" />
+                                <circle cx="9" cy="17.5" r="1.3" fill="currentColor" stroke="none" />
+                                <circle cx="14" cy="17.5" r="1.3" fill="currentColor" stroke="none" />
+                                <circle cx="19" cy="17.5" r="1.3" fill="currentColor" stroke="none" />
+                            </svg>
+                        </span>
+                    </div>
+                    <div class="contrib-title">2&nbsp;&middot;&nbsp;Approximate discrete matching by leveraging diffusion</div>
+                    <p class="idea-punch">A combinatorial matching problem, made <em>learnable</em>.</p>
+                    <ul class="idea-points">
+                        <li><strong>Relax:</strong> discrete hypergraph matching to a continuous polytope of valid multi-view assignments</li>
+                        <li><strong>Diffuse:</strong> denoise toward a match, staying feasible at every step</li>
+                        <li><strong>Train:</strong> fully differentiable, no 3D ground truth</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Headline numbers strip (animated counters) -->
+            <div class="stats-strip" role="group" aria-label="Headline results">
+                <div class="stat-cell">
+                    <span class="stat-value">
+                        <span class="stat-prefix">+</span><span data-count="11" data-decimals="0" data-duration="1100">0</span><span class="stat-suffix">&nbsp;AP<sub>25</sub></span>
+                    </span>
+                    <span class="stat-label">over the best self-supervised baseline on CMU&nbsp;Panoptic</span>
+                </div>
+                <div class="stat-cell">
+                    <span class="stat-value">
+                        <span>3&ndash;4</span><span class="stat-suffix">&times; faster</span>
+                    </span>
+                    <span class="stat-label">than SelfPose3D across all view counts</span>
+                </div>
+                <div class="stat-cell">
+                    <span class="stat-value">
+                        <span class="stat-prefix">+</span><span data-count="16" data-decimals="0" data-duration="1100">0</span><span class="stat-suffix">% mAP</span>
+                    </span>
+                    <span class="stat-label">over the best self-supervised baseline on unseen camera rigs</span>
+                </div>
+            </div>
+
+            <figure class="figure">
+                <img src="./static/images/method.webp"
+                    alt="DisPOSE overall framework with Stage I (root assignment) and Stage II (pose regression)."
+                    width="1760" height="641" loading="lazy" decoding="async" />
+                <figcaption class="fig-caption">
+                    <strong>The pipeline.</strong> Stage&nbsp;I matches people across views and triangulates their 3D
+                    root positions; Stage&nbsp;II regresses each full-body pose with a hypergraph-convolutional decoder.
+                </figcaption>
+            </figure>
+
+            <figure class="teaser reveal">
+                <div class="teaser-video-wrap" role="button" tabindex="0" aria-label="Play or pause the teaser video">
+                    <video src="./static/videos/teaser.mp4" poster="./static/images/teaser.webp" preload="auto"
+                        playsinline muted
+                        aria-label="DisPOSE teaser: projected diffusion denoising multi-view correspondences into clean matches and complete 3D poses.">
+                    </video>
+                    <div class="video-play-overlay" aria-hidden="true">
+                        <span class="play-glyph">
+                            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M8 5v14l11-7z" />
+                            </svg>
+                        </span>
+                    </div>
+                </div>
+                <figcaption class="teaser-caption">
+                    <strong>Projected diffusion in motion.</strong> Detections across the camera views form a noisy
+                    multi-view correspondence hypergraph. DisPOSE denoises it as a diffusion on the space of
+                    <em>polystochastic tensors</em> (the sphere inset), projecting each reverse step back onto this
+                    feasible set, until the correspondences resolve into consistent matches and full 3D poses.
+                    <span
+                        style="display:block; margin-top:8px; font-size:0.82em; color:var(--text-mute); text-align:center;">
+                        Click the video to play or pause.
+                    </span>
+                </figcaption>
+            </figure>
+        </div>
+    </section>
+
+    <!-- ===================== Contributions ===================== -->
+    <section class="section section-alt reveal" id="contributions">
+        <div class="container">
+            <div class="section-title-block">
+                <h2>Key Contributions</h2>
+                <p>Click any contribution card to jump to its dedicated section.</p>
+            </div>
+
+            <div class="contrib-grid">
+                <!-- Contribution 1 — Projected Polystochastic Diffusion -->
+                <a class="contrib-card" href="#method">
+                    <div class="contrib-card-header">
+                        <span class="contrib-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                stroke-linejoin="round" stroke-linecap="round">
+                                <path d="M12 3 L4 7 L4 17 L12 21 L20 17 L20 7 Z" />
+                                <path d="M4 7 L12 11 L20 7" />
+                                <path d="M12 11 L12 21" />
+                                <circle cx="12" cy="11" r="1.4" fill="currentColor" stroke="none" />
+                            </svg>
+                        </span>
+                        <span class="contrib-num">Contribution&nbsp;①</span>
+                    </div>
+                    <div class="contrib-title">Projected Polystochastic Diffusion</div>
+                    <p class="contrib-body">
+                        The assignment-as-diffusion formulation and the hypergraph pose decoder.
+                    </p>
+                    <span class="contrib-cta">See method</span>
+                </a>
+
+                <!-- Contribution 2 — MM-OR Pose benchmark -->
+                <a class="contrib-card" href="#mm-or">
+                    <div class="contrib-card-header">
+                        <span class="contrib-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                stroke-linejoin="round" stroke-linecap="round">
+                                <rect x="3" y="5" width="18" height="14" rx="2" />
+                                <path d="M12 8 L12 16 M8 12 L16 12" />
+                                <circle cx="6" cy="3" r="0.9" fill="currentColor" stroke="none" />
+                                <circle cx="18" cy="3" r="0.9" fill="currentColor" stroke="none" />
+                            </svg>
+                        </span>
+                        <span class="contrib-num">Contribution&nbsp;②</span>
+                    </div>
+                    <div class="contrib-title">MM-OR Pose Benchmark</div>
+                    <p class="contrib-body">
+                        750 hand-annotated frames of authentic surgical scenes. Loose surgical attire and severe occlusion.
+                    </p>
+                    <span class="contrib-cta">Watch the benchmark</span>
+                </a>
+
+                <!-- Contribution 3 — Camera-agnostic SOTA -->
+                <a class="contrib-card" href="#generalization">
+                    <div class="contrib-card-header">
+                        <span class="contrib-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                stroke-linejoin="round" stroke-linecap="round">
+                                <path d="M3 17 L9 11 L13 15 L21 7" />
+                                <path d="M15 7 L21 7 L21 13" />
+                            </svg>
+                        </span>
+                        <span class="contrib-num">Contribution&nbsp;③</span>
+                    </div>
+                    <div class="contrib-title">Camera-Agnostic SOTA</div>
+                    <p class="contrib-body">
+                        New self-supervised state-of-the-art across four benchmarks, and <strong>75% vs 59%</strong> mAP on unseen camera rigs without any fine-tuning.
+                    </p>
+                    <span class="contrib-cta">See results</span>
+                </a>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- ===================== MM-OR Pose (Contribution 2) ===================== -->
+    <section class="section reveal" id="mm-or">
+        <div class="container">
+            <div class="section-title-block">
+                <span class="hero-eyebrow">Contribution&nbsp;②&nbsp;·&nbsp;New Benchmark</span>
+                <h2>MM-OR Pose: Surgical Operating Rooms</h2>
+                <p>
+                    Existing multi-view 3D pose benchmarks (CMU&nbsp;Panoptic, Shelf, Campus) feature relatively moderate occlusion and standard street attire.
+                    Real clinical scenes break both assumptions: surgeons wear loose smocks, the field is crowded with
+                    medical equipment, lights and staff. We extend the
+                    <a href="https://arxiv.org/abs/2503.02579" target="_blank" rel="noopener noreferrer"><strong>MM-OR</strong> dataset</a> (&Ouml;zsoy et&nbsp;al., 2025), recordings of knee surgeries, with <strong>750 manually annotated 3D pose frames</strong> across three surgical sequences, releasing the labels as the <em>MM-OR Pose</em> benchmark.
+                </p>
+            </div>
+
+            <figure class="figure video-card reveal" style="margin-top: 28px;">
+                <span class="video-label">MM-OR Pose&nbsp;&middot;&nbsp;Ground Truth</span>
+                <video data-src="./static/videos/mm_or_gt_showcase.mp4" poster="./static/images/mm_or_poster.webp"
+                    preload="none" controls playsinline muted autoplay loop
+                    aria-label="MM-OR Pose ground-truth showcase video">
+                </video>
+                <figcaption class="fig-caption" style="margin-top: 14px;">
+                    Showcase of the new MM-OR Pose ground-truth annotations across the three labelled sequences
+                    (004&nbsp;PKA, 011&nbsp;TKA, 036&nbsp;PKA).
+                </figcaption>
+            </figure>
+        </div>
+    </section>
+
+    <!-- ===================== Abstract ===================== -->
+    <section class="section section-alt reveal" id="abstract">
+        <div class="container">
+            <div class="abstract-card">
+                <div class="abstract-label">Abstract</div>
+                <p class="abstract-tldr">
+                    <span class="tldr-tag">TL;DR:</span> a <strong>self-supervised</strong> framework that solves
+                    multi-view person assignment as <strong>diffusion on the polystochastic polytope</strong>, then
+                    regresses 3D skeletons with a hypergraph decoder. New self-supervised state of the art, robust to
+                    unseen camera rigs, <strong>no 3D ground truth</strong>.
+                </p>
+                <div class="abstract-body">
+                    Recovering 3D human poses for multiple individuals from different camera views is a fundamental
+                    bottleneck for analyzing interacting behaviors.
+                    Existing self-supervised approaches rely on synthetic catalogues of 3D poses;
+                    however, this leads to poor generalization in real-world scenarios due to distribution shifts.
+                    We therefore introduce <strong>DisPOSE</strong>, a self-supervised framework that approximates the inherently discrete multi-view person-assignment problem as a <em>generative diffusion process over the space of polystochastic tensors</em>.
+                    By employing differentiable <strong>Sinkhorn projections</strong> during denoising, our model learns to guide solutions toward feasible assignments based on 2D image priors.
+                    The complete 3D skeletons of localized individuals are then regressed using a <strong>Hypergraph-Convolutional Decoder</strong> that explicitly models relational structures and
+                    articulated joints across multiple views.
+                    The proposed approach outperforms current state-of-the-art self-supervised methods on standard
+                    datasets and demonstrates strong performance on a newly proposed benchmark featuring highly occluded
+                    scenes from <strong>surgical operating rooms</strong>. Our diffusion-based localization demonstrates high label efficiency, retaining <strong>99% of its performance with only 10% of the pseudo-labels</strong>. Disentangling the assignment and root regression components while maintaining differentiability makes DisPOSE nearly agnostic to different camera arrangements.
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== Method (Contribution 1) ===================== -->
+    <section class="section reveal" id="method">
+        <div class="container">
+            <div class="section-title-block">
+                <span class="hero-eyebrow">Contribution&nbsp;①&nbsp;·&nbsp;Method</span>
+                <h2>From Voxel Grids to a Diffusion on the Polytope</h2>
+                <p>
+                    Prevailing methods fuse all views into a 3D voxel grid and solve assignment and regression jointly,
+                    which ties the model to a fixed camera rig and hurts generalization. DisPOSE keeps the two apart and
+                    recasts assignment as a matching problem over the multi-view hypergraph below.
+                </p>
+            </div>
+
+            <!-- Preliminary: pairwise vs hyperedge correspondence -->
+            <div class="preliminary-block reveal">
+                <span class="hero-eyebrow">Preliminary</span>
+                <h3>From pairwise edges to hyperedges</h3>
+                <div class="preliminary-grid">
+                    <div class="prelim-card">
+                        <div class="prelim-svg">
+                            <svg viewBox="0 0 220 150" aria-label="Pairwise edges — triangle of pairwise links between three views.">
+                                <line x1="40"  y1="40"  x2="180" y2="40"  stroke="currentColor" stroke-width="1.6" stroke-opacity="0.55" />
+                                <line x1="40"  y1="40"  x2="110" y2="120" stroke="currentColor" stroke-width="1.6" stroke-opacity="0.55" />
+                                <line x1="180" y1="40"  x2="110" y2="120" stroke="currentColor" stroke-width="1.6" stroke-opacity="0.55" />
+                                <circle cx="40"  cy="40"  r="9" fill="currentColor" />
+                                <circle cx="180" cy="40"  r="9" fill="currentColor" />
+                                <circle cx="110" cy="120" r="9" fill="currentColor" />
+                                <text x="14"  y="25"  font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" fill-opacity="0.6">view 1</text>
+                                <text x="155" y="25"  font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" fill-opacity="0.6">view 2</text>
+                                <text x="84"  y="143" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" fill-opacity="0.6">view 3</text>
+                            </svg>
+                        </div>
+                        <span class="prelim-title">Pairwise edges</span>
+                        <p>
+                            An edge links <em>two</em> detections: &ldquo;<em>view 1 ↔ view 2 is the same person</em>&rdquo;. Many such pairwise edges must then be reconciled into a globally consistent matching (cycle consistency, synchronization). Local mistakes propagate.
+                        </p>
+                    </div>
+                    <div class="prelim-card is-ours">
+                        <div class="prelim-svg">
+                            <svg viewBox="0 0 220 150" aria-label="Hyperedge — a single shape enclosing three view nodes.">
+                                <path d="M 40 40 Q 110 -10 180 40 Q 215 95 110 130 Q 5 95 40 40 Z"
+                                      fill="currentColor" fill-opacity="0.16"
+                                      stroke="currentColor" stroke-width="1.8" stroke-opacity="0.95" />
+                                <circle cx="40"  cy="40"  r="9" fill="currentColor" />
+                                <circle cx="180" cy="40"  r="9" fill="currentColor" />
+                                <circle cx="110" cy="120" r="9" fill="currentColor" />
+                                <text x="14"  y="25"  font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" fill-opacity="0.7">view 1</text>
+                                <text x="155" y="25"  font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" fill-opacity="0.7">view 2</text>
+                                <text x="84"  y="143" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" fill-opacity="0.7">view 3</text>
+                            </svg>
+                        </div>
+                        <span class="prelim-title">Hyperedges (ours)</span>
+                        <p>
+                            A single <em>hyperedge</em> groups one detection per view into <strong>one</strong> multi-view person hypothesis. 
+                            Consistency is enforced jointly across all cameras at once. The atomic unit of correspondence is the hypothesis rather than the pairwise match.
+                        </p>
+                    </div>
+                </div>
+                <p class="prelim-foot">
+                    Following <a href="https://arxiv.org/abs/2601.09698" target="_blank" rel="noopener noreferrer">COMPOSE</a> (Wang&nbsp;et&nbsp;al.,&nbsp;2026), DisPOSE adopts this higher-order formulation: every candidate cross-view association is a hyperedge of the <em>multi-view correspondence hypergraph</em>. 
+                    Stage&nbsp;I then runs diffusion on the polytope of hyperedge selections.
+                </p>
+            </div>
+
+            <h3 id="diffusion">Stage&nbsp;I: Projected Polystochastic Diffusion</h3>
+
+            <div class="step-row" aria-label="Stage I pipeline overview">
+                <div class="step-pill">
+                    <span class="step-num">1</span>
+                    <span class="step-text">Build a <strong>multi-view correspondence hypergraph</strong> from 2D root heatmaps</span>
+                </div>
+                <span class="step-arrow" aria-hidden="true">→</span>
+                <div class="step-pill">
+                    <span class="step-num">2</span>
+                    <span class="step-text">Diffuse on the <strong>polystochastic polytope</strong> (Multi-Marginal Sinkhorn projection every step)</span>
+                </div>
+                <span class="step-arrow" aria-hidden="true">→</span>
+                <div class="step-pill">
+                    <span class="step-num">3</span>
+                    <span class="step-text">Differentiable triangulation to <strong>3D root locations</strong></span>
+                </div>
+            </div>
+
+            <p class="method-body">
+                Per-view 2D root candidates (extracted via soft-argmax on the heatmaps <strong>H<sub>v</sub></strong>) become the nodes of a <em>multi-view correspondence hypergraph</em>; each hyperedge is a candidate cross-camera association.
+                We relax the discrete assignment over this hypergraph into a continuous <em>polystochastic tensor</em>: the multi-mode analogue of a doubly-stochastic matrix.
+            </p>
+
+            <figure class="figure light-figure">
+                <img src="./static/images/stage_1.webp"
+                    alt="Stage I — Projected diffusion on the polystochastic tensor space producing per-individual 3D root locations."
+                    width="1760" height="501" loading="lazy" decoding="async" />
+                <figcaption class="fig-caption">
+                    <strong>Stage&nbsp;I.</strong> A denoising hypergraph network operates on the polystochastic tensor space 𝒮<sup>(V)</sup>. 
+                    Every reverse-time prediction is projected back onto the feasible polytope via &Pi;<sub>𝒮</sub>, and differentiable triangulation produces per-individual 3D root locations <strong>𝒫<sub>root</sub></strong>.
+                </figcaption>
+            </figure>
+
+            <p class="method-body">
+                A hypergraph denoiser learns the reverse-time process on this polytope.
+                At each step it predicts a clean assignment <strong>&chi;<sub>0</sub></strong>; the differentiable <em>Sinkhorn projection</em> &Pi;<sub>𝒮</sub> then snaps the state back onto the polystochastic manifold, and a DDIM update walks the latent one step closer to <em>t&nbsp;=&nbsp;0</em>.
+            </p>
+
+            <figure class="figure">
+                <img src="./static/images/diffusion.webp"
+                    alt="Single step of the projected reverse-time generation: projection Pi_S, denoiser f_theta, DDIM step."
+                    width="1080" height="501" loading="lazy" decoding="async" />
+                <figcaption class="fig-caption">
+                    <strong>Zoom on one reverse-time step.</strong> The latent <em>u<sub>t</sub></em> is projected onto the polystochastic polytope via &Pi;<sub>𝒮</sub>, denoised by <em>f<sub>&Theta;</sub></em> to a clean estimate <em>û<sub>0</sub></em>, and combined by the DDIM update above to produce
+                    <em>u<sub>t&minus;1</sub></em>.
+                    Iterating walks the latent through the projected forward chain until
+                    <em>t&nbsp;=&nbsp;0</em>.
+                </figcaption>
+            </figure>
+
+            <h3>Stage&nbsp;II: Hypergraph Pose Regression</h3>
+
+            <div class="step-row" aria-label="Stage II pipeline overview">
+                <div class="step-pill">
+                    <span class="step-num">1</span>
+                    <span class="step-text"><strong>T-Pose initialization</strong> at each predicted 3D root</span>
+                </div>
+                <span class="step-arrow" aria-hidden="true">→</span>
+                <div class="step-pill">
+                    <span class="step-num">2</span>
+                    <span class="step-text">Sample per-joint features at <strong>projected 3D locations</strong> in every view</span>
+                </div>
+                <span class="step-arrow" aria-hidden="true">→</span>
+                <div class="step-pill">
+                    <span class="step-num">3</span>
+                    <span class="step-text"><strong>Hypergraph convolutions</strong> over cross-view + person-part edges</span>
+                </div>
+            </div>
+
+            <p class="method-body">
+                Each individual starts as a T-Pose <strong>𝒫<sup>(0)</sup></strong> anchored at its Stage-I root. We sample per-joint multi-view features at the projected 3D locations <strong>p<sub>v,k,j</sub></strong>, then iteratively refine the pose <strong>𝒫<sup>(&tau;)</sup>&nbsp;&rarr;&nbsp;𝒫<sup>(&tau;+1)</sup></strong> with a <em>Hypergraph Convolutional Decoder</em>.
+                The decoder runs attention over two edge types: <em>cross-view hyperedges</em> fuse evidence across cameras, and <em>person-part hyperedges</em> enforce articulated joint consistency. This resolves fine-grained pose without ever materialising a 3D voxel grid.
+            </p>
+
+            <figure class="figure light-figure">
+                <img src="./static/images/stage_2.webp"
+                    alt="Stage II — Iterative pose regression with a Hypergraph Convolutional Decoder operating over cross-view and person-part hyperedges."
+                    width="1760" height="501" loading="lazy" decoding="async" />
+                <figcaption class="fig-caption">
+                    <strong>Stage&nbsp;II.</strong> Starting from T-Pose initializations sampled at projected 3D
+                    locations, the Hypergraph Convolutional Decoder iteratively refines each skeleton over cross-view (blue) and person-part (pink) hyperedges, yielding the final per-root 3D pose <strong>𝒫<sup>(T)</sup></strong>.
+                </figcaption>
+            </figure>
+        </div>
+    </section>
+
+    <!-- ===================== Results ===================== -->
+    <section class="section section-alt reveal" id="results">
+        <div class="container">
+            <div class="section-title-block">
+                <h2>Results</h2>
+                <p>
+                    <strong>DisPOSE leads every self-supervised baseline on all four benchmarks below, and the margin
+                    grows on the hardest cases (surgery, unseen rigs).</strong>
+                    We compare against fully-supervised, optimization-based, and self-supervised methods on
+                    CMU&nbsp;Panoptic, Shelf&nbsp;&amp;&nbsp;Campus, and the new MM-OR&nbsp;Pose; method names link to code where available.
+                </p>
+            </div>
+
+            <!-- ===================== Dataset tab switcher ===================== -->
+            <div class="tab-system">
+                <div class="dataset-tabs-wrap">
+                    <span class="dataset-tabs-label">Choose a dataset</span>
+                    <div class="dataset-tabs" role="tablist" aria-label="Results by dataset">
+                        <button class="dataset-tab-btn active" type="button" role="tab" id="panel-cmu-tab" data-target="panel-cmu"
+                            aria-controls="panel-cmu" aria-selected="true">
+                            <span class="dataset-tab-num">01</span><span>CMU&nbsp;Panoptic</span>
+                        </button>
+                        <button class="dataset-tab-btn" type="button" role="tab" id="panel-mmor-tab" data-target="panel-mmor-table"
+                            aria-controls="panel-mmor-table" aria-selected="false">
+                            <span class="dataset-tab-num">02</span><span>MM-OR&nbsp;Pose</span>
+                        </button>
+                        <button class="dataset-tab-btn" type="button" role="tab" id="panel-shelf-campus-tab" data-target="panel-shelf-campus"
+                            aria-controls="panel-shelf-campus" aria-selected="false">
+                            <span
+                                class="dataset-tab-num">03&nbsp;·&nbsp;04</span><span>Shelf&nbsp;&amp;&nbsp;Campus</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ===================== Panel: CMU Panoptic ===================== -->
+                <div class="dataset-panel active" id="panel-cmu" role="tabpanel" aria-labelledby="panel-cmu-tab">
+                    <div class="dataset-section">
+                        <div class="dataset-header">
+                            <span class="dataset-tag">Dataset&nbsp;1</span>
+                            <span class="dataset-name">CMU&nbsp;Panoptic</span>
+                        </div>
+                        <p class="dataset-blurb">
+                            Large-scale multi-view dome capture (Joo&nbsp;et&nbsp;al., 2015) with moderate occlusion and
+                            social interactions.
+                        </p>
+
+                        <p class="table-takeaway">
+                            <strong>Bottom line:</strong> best self-supervised method on every metric, +11&nbsp;AP<sub>25</sub> over the next best.
+                        </p>
+                        <div class="table-wrapper">
+                            <table class="results-table">
+                                <caption>
+                                    <span class="caption-label">Table 1</span>
+                                    Pose estimation on CMU&nbsp;Panoptic. Best self-supervised results in
+                                    <strong>bold</strong>; DisPOSE row highlighted. <span class="note">&dagger; uses 9 temporal frames as input.
+                                    </span>
+                                </caption>
+                                <thead>
+                                    <tr>
+                                        <th rowspan="2">Method</th>
+                                        <th colspan="4" class="subhead">AP (mm) ↑</th>
+                                        <th rowspan="2">Recall@500 ↑</th>
+                                        <th rowspan="2">MPJPE ↓</th>
+                                    </tr>
+                                    <tr>
+                                        <th>25</th>
+                                        <th>50</th>
+                                        <th>100</th>
+                                        <th>150</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="group-header">
+                                        <td colspan="7">Fully-supervised</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/microsoft/voxelpose-pytorch"
+                                                target="_blank" rel="noopener noreferrer">VoxelPose</a></td>
+                                        <td>83.59</td>
+                                        <td>98.33</td>
+                                        <td>99.76</td>
+                                        <td>99.91</td>
+                                        <td>—</td>
+                                        <td>17.68</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/jiahaoLjh/PlaneSweepPose"
+                                                target="_blank" rel="noopener noreferrer">Plane Sweep</a></td>
+                                        <td>92.12</td>
+                                        <td>98.96</td>
+                                        <td>99.81</td>
+                                        <td>99.84</td>
+                                        <td>—</td>
+                                        <td>16.75</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/sail-sg/mvp" target="_blank"
+                                                rel="noopener noreferrer">MvP</a></td>
+                                        <td>92.28</td>
+                                        <td>96.60</td>
+                                        <td>97.45</td>
+                                        <td>97.69</td>
+                                        <td>—</td>
+                                        <td>15.76</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/wusize/multiview_pose"
+                                                target="_blank" rel="noopener noreferrer">Wu&nbsp;et&nbsp;al.</a></td>
+                                        <td>93.93</td>
+                                        <td>98.93</td>
+                                        <td>99.78</td>
+                                        <td>99.90</td>
+                                        <td>99.97</td>
+                                        <td>15.63</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/AlvinYH/Faster-VoxelPose"
+                                                target="_blank" rel="noopener noreferrer">Faster VoxelPose</a></td>
+                                        <td>85.22</td>
+                                        <td>98.08</td>
+                                        <td>99.32</td>
+                                        <td>99.48</td>
+                                        <td>—</td>
+                                        <td>18.26</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/rccchoudhury/tempo"
+                                                target="_blank" rel="noopener noreferrer">TEMPO</a></td>
+                                        <td>89.01</td>
+                                        <td>99.08</td>
+                                        <td>99.76</td>
+                                        <td>99.93</td>
+                                        <td>—</td>
+                                        <td>14.68</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/XunshanMan/MVGFormer"
+                                                target="_blank" rel="noopener noreferrer">MVGFormer</a></td>
+                                        <td>92.32</td>
+                                        <td>97.93</td>
+                                        <td>99.32</td>
+                                        <td>99.55</td>
+                                        <td>99.86</td>
+                                        <td>15.99</td>
+                                    </tr>
+                                    <tr>
+                                        <td>VoxelPose+3DSA</td>
+                                        <td>94.20</td>
+                                        <td>98.49</td>
+                                        <td>99.21</td>
+                                        <td>99.31</td>
+                                        <td>—</td>
+                                        <td>13.98</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/aviralchharia/MV-SSM"
+                                                target="_blank" rel="noopener noreferrer">MV-SSM</a></td>
+                                        <td>93.50</td>
+                                        <td>—</td>
+                                        <td>—</td>
+                                        <td>—</td>
+                                        <td>—</td>
+                                        <td>15.70</td>
+                                    </tr>
+
+                                    <tr class="group-header">
+                                        <td colspan="7">Optimization-based</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/ErikGartner/actor"
+                                                target="_blank" rel="noopener noreferrer">ACTOR</a></td>
+                                        <td>—</td>
+                                        <td>—</td>
+                                        <td>—</td>
+                                        <td>—</td>
+                                        <td>—</td>
+                                        <td>168.40</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/zju3dv/mvpose"
+                                                target="_blank" rel="noopener noreferrer">MvPose</a></td>
+                                        <td>37.63</td>
+                                        <td>95.70</td>
+                                        <td>97.84</td>
+                                        <td>98.28</td>
+                                        <td>99.60</td>
+                                        <td>26.46</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://arxiv.org/abs/2601.09698"
+                                                target="_blank" rel="noopener noreferrer">COMPOSE</a></td>
+                                        <td>54.66</td>
+                                        <td>97.27</td>
+                                        <td>98.94</td>
+                                        <td>99.17</td>
+                                        <td>99.83</td>
+                                        <td>23.62</td>
+                                    </tr>
+
+                                    <tr class="group-header">
+                                        <td colspan="7">Self-supervised</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/CAMMA-public/SelfPose3d"
+                                                target="_blank" rel="noopener noreferrer">SelfPose3D</a></td>
+                                        <td>55.13</td>
+                                        <td>96.44</td>
+                                        <td>98.46</td>
+                                        <td>98.98</td>
+                                        <td>99.60</td>
+                                        <td>24.47</td>
+                                    </tr>
+                                    <tr>
+                                        <td>DSP&dagger;</td>
+                                        <td>57.60</td>
+                                        <td>86.10</td>
+                                        <td>94.00</td>
+                                        <td>—</td>
+                                        <td>—</td>
+                                        <td>23.10</td>
+                                    </tr>
+                                    <tr class="ours">
+                                        <td>DisPOSE&nbsp;(Ours)</td>
+                                        <td class="best">68.59</td>
+                                        <td class="best">98.59</td>
+                                        <td class="best">99.60</td>
+                                        <td class="best">99.80</td>
+                                        <td class="best">99.91</td>
+                                        <td class="best">21.20</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p>
+                            Among self-supervised methods, DisPOSE wins every metric: <span
+                                class="highlight-num">+11.0</span> AP<sub>25</sub>
+                            over the next-best baseline and an <span class="highlight-num">8% MPJPE</span> improvement
+                            (21.20 vs 23.10 mm).
+                            DisPOSE also surpasses
+                            every <em>optimization-based</em> competitor at every precision threshold.
+                        </p>
+                    </div>
+
+                </div><!-- /panel-cmu -->
+
+                <!-- ===================== Panel: MM-OR Pose (table) ===================== -->
+                <div class="dataset-panel" id="panel-mmor-table" role="tabpanel" aria-labelledby="panel-mmor-tab">
+                    <div class="dataset-section">
+                        <div class="dataset-header">
+                            <span class="dataset-tag">Dataset&nbsp;2</span>
+                            <span class="dataset-name">MM-OR&nbsp;Pose <span
+                                    style="color: var(--text-mute); font-weight: 400; font-size: 0.78em;">(new; see <a
+                                        href="#mm-or">Contribution&nbsp;②</a>)</span></span>
+                        </div>
+                        <p class="dataset-blurb">
+                            Surgical operating rooms with loose attire, severe occlusion, and unusual postures. 
+                            5 calibrated cameras, 750 hand-annotated frames.
+                        </p>
+
+                        <p class="table-takeaway">
+                            <strong>Bottom line:</strong> on hard surgical scenes DisPOSE nearly doubles AP<sub>50</sub> and cuts joint error by 14&nbsp;mm.
+                        </p>
+                        <div class="table-wrapper">
+                            <table class="results-table">
+                                <caption>
+                                    <span class="caption-label">Table 2</span>
+                                    Results on the proposed MM-OR&nbsp;Pose benchmark. Best results in
+                                    <strong>bold</strong>.
+                                    <span class="note">AP<sub>25</sub> omitted: surgical helmets and gowns make
+                                        millimeter-precise GT annotation infeasible.</span>
+                                </caption>
+                                <thead>
+                                    <tr>
+                                        <th rowspan="2">Method</th>
+                                        <th colspan="3" class="subhead">AP (mm) ↑</th>
+                                        <th rowspan="2">Recall@500 ↑</th>
+                                        <th rowspan="2">MPJPE ↓</th>
+                                    </tr>
+                                    <tr>
+                                        <th>50</th>
+                                        <th>100</th>
+                                        <th>150</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="group-header">
+                                        <td colspan="6">Self-supervised</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/CAMMA-public/SelfPose3d"
+                                                target="_blank" rel="noopener noreferrer">SelfPose3D</a></td>
+                                        <td>23.38</td>
+                                        <td>69.68</td>
+                                        <td>82.82</td>
+                                        <td>94.33</td>
+                                        <td>70.69</td>
+                                    </tr>
+                                    <tr class="ours">
+                                        <td>DisPOSE&nbsp;(Ours)</td>
+                                        <td class="best">47.06</td>
+                                        <td class="best">83.59</td>
+                                        <td class="best">92.01</td>
+                                        <td class="best">97.04</td>
+                                        <td class="best">56.91</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p>
+                            Surgical scenes break baselines. 
+                            SelfPose3D's AP<sub>50</sub> collapses from 96.44 to 23.38, while DisPOSE doubles AP<sub>50</sub> (<span class="highlight-num">+23.7</span>), lifts Recall@500 by <span class="highlight-num">+2.7</span> points, and shrinks MPJPE by
+                            <span class="highlight-num">14&nbsp;mm</span>.
+                        </p>
+                    </div>
+
+                </div><!-- /panel-mmor-table -->
+
+                <!-- ===================== Panel: Shelf & Campus ===================== -->
+                <div class="dataset-panel" id="panel-shelf-campus" role="tabpanel"
+                    aria-labelledby="panel-shelf-campus-tab">
+                    <div class="dataset-section">
+                        <div class="dataset-header">
+                            <span class="dataset-tag">Dataset&nbsp;3&nbsp;·&nbsp;Shelf</span>
+                            <span class="dataset-tag-sep">+</span>
+                            <span class="dataset-tag">Dataset&nbsp;4&nbsp;·&nbsp;Campus</span>
+                            <span class="dataset-name">Shelf &amp; Campus</span>
+                        </div>
+                        <p class="dataset-blurb">
+                            Two classic small-scale multi-view benchmarks reported jointly. <strong>Shelf</strong>
+                            (Belagiannis et&nbsp;al., 2014): 4 people interacting around a wooden shelf in a confined indoor space, 5 calibrated cameras.
+                            <strong>Campus</strong> (Belagiannis et&nbsp;al., 2014): 3 subjects navigating an outdoor
+                            courtyard, minimal 3-camera setup.
+                        </p>
+
+                        <p class="table-takeaway">
+                            <strong>Bottom line:</strong> matches or beats every self-supervised baseline, and stays competitive with fully-supervised methods.
+                        </p>
+                        <div class="table-wrapper">
+                            <table class="results-table">
+                                <caption>
+                                    <span class="caption-label">Table 3</span>
+                                    Pose estimation on Shelf and Campus (PCP %). Best self-supervised results in
+                                    <strong>bold</strong>.
+                                    <span class="note">&dagger; uses 81 temporal frames as input.</span>
+                                </caption>
+                                <thead>
+                                    <tr>
+                                        <th rowspan="2">Method</th>
+                                        <th colspan="4" class="subhead">Shelf (PCP %) ↑</th>
+                                        <th colspan="4" class="subhead">Campus (PCP %) ↑</th>
+                                    </tr>
+                                    <tr>
+                                        <th>Act 1</th>
+                                        <th>Act 2</th>
+                                        <th>Act 3</th>
+                                        <th>Avg.</th>
+                                        <th>Act 1</th>
+                                        <th>Act 2</th>
+                                        <th>Act 3</th>
+                                        <th>Avg.</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="group-header">
+                                        <td colspan="9">Fully-supervised</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Ershadi-Nasab&nbsp;et&nbsp;al.</td>
+                                        <td>93.3</td>
+                                        <td>75.9</td>
+                                        <td>94.8</td>
+                                        <td>88.0</td>
+                                        <td>94.2</td>
+                                        <td>92.9</td>
+                                        <td>84.6</td>
+                                        <td>90.6</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/microsoft/voxelpose-pytorch"
+                                                target="_blank" rel="noopener noreferrer">VoxelPose</a></td>
+                                        <td>99.3</td>
+                                        <td>94.1</td>
+                                        <td>97.6</td>
+                                        <td>97.0</td>
+                                        <td>97.6</td>
+                                        <td>93.8</td>
+                                        <td>98.8</td>
+                                        <td>96.7</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/wusize/multiview_pose"
+                                                target="_blank" rel="noopener noreferrer">Wu&nbsp;et&nbsp;al.</a></td>
+                                        <td>99.3</td>
+                                        <td>96.5</td>
+                                        <td>97.3</td>
+                                        <td>97.7</td>
+                                        <td>—</td>
+                                        <td>—</td>
+                                        <td>—</td>
+                                        <td>—</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/sail-sg/mvp" target="_blank"
+                                                rel="noopener noreferrer">MvP</a></td>
+                                        <td>99.3</td>
+                                        <td>95.1</td>
+                                        <td>97.8</td>
+                                        <td>97.4</td>
+                                        <td>98.2</td>
+                                        <td>94.1</td>
+                                        <td>97.4</td>
+                                        <td>96.6</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/AlvinYH/Faster-VoxelPose"
+                                                target="_blank" rel="noopener noreferrer">Faster VoxelPose</a></td>
+                                        <td>99.4</td>
+                                        <td>96.0</td>
+                                        <td>97.5</td>
+                                        <td>97.6</td>
+                                        <td>96.5</td>
+                                        <td>94.1</td>
+                                        <td>97.9</td>
+                                        <td>96.2</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/rccchoudhury/tempo"
+                                                target="_blank" rel="noopener noreferrer">TEMPO</a></td>
+                                        <td>99.3</td>
+                                        <td>95.1</td>
+                                        <td>97.8</td>
+                                        <td>97.4</td>
+                                        <td>97.7</td>
+                                        <td>95.5</td>
+                                        <td>97.9</td>
+                                        <td>97.3</td>
+                                    </tr>
+
+                                    <tr class="group-header">
+                                        <td colspan="9">Optimization-based</td>
+                                    </tr>
+                                    <tr>
+                                        <td>3DPS</td>
+                                        <td>75.3</td>
+                                        <td>69.7</td>
+                                        <td>87.6</td>
+                                        <td>77.5</td>
+                                        <td>93.5</td>
+                                        <td>75.7</td>
+                                        <td>84.4</td>
+                                        <td>84.5</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/zju3dv/mvpose"
+                                                target="_blank" rel="noopener noreferrer">MvPose</a></td>
+                                        <td>98.8</td>
+                                        <td>94.1</td>
+                                        <td>97.8</td>
+                                        <td>96.9</td>
+                                        <td>97.6</td>
+                                        <td>93.3</td>
+                                        <td>98.0</td>
+                                        <td>96.3</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://arxiv.org/abs/2601.09698"
+                                                target="_blank" rel="noopener noreferrer">COMPOSE</a></td>
+                                        <td>99.8</td>
+                                        <td>92.4</td>
+                                        <td>96.3</td>
+                                        <td>96.2</td>
+                                        <td>99.4</td>
+                                        <td>94.3</td>
+                                        <td>98.1</td>
+                                        <td>97.3</td>
+                                    </tr>
+
+                                    <tr class="group-header">
+                                        <td colspan="9">Self-supervised</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/CAMMA-public/SelfPose3d"
+                                                target="_blank" rel="noopener noreferrer">SelfPose3D</a></td>
+                                        <td>97.2</td>
+                                        <td>90.3</td>
+                                        <td>97.9</td>
+                                        <td>95.1</td>
+                                        <td>92.5</td>
+                                        <td>82.2</td>
+                                        <td>89.2</td>
+                                        <td>87.9</td>
+                                    </tr>
+                                    <tr>
+                                        <td>DSP&dagger;</td>
+                                        <td>99.1</td>
+                                        <td>92.8</td>
+                                        <td>98.3</td>
+                                        <td>96.7</td>
+                                        <td>94.9</td>
+                                        <td>91.0</td>
+                                        <td>92.4</td>
+                                        <td>92.8</td>
+                                    </tr>
+                                    <tr class="ours">
+                                        <td>DisPOSE&nbsp;(Ours)</td>
+                                        <td class="best">99.5</td>
+                                        <td class="best">94.1</td>
+                                        <td>97.8</td>
+                                        <td class="best">97.1</td>
+                                        <td class="best">98.8</td>
+                                        <td class="best">93.7</td>
+                                        <td class="best">94.3</td>
+                                        <td class="best">95.6</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div><!-- /panel-shelf-campus -->
+            </div><!-- /tab-system (datasets) -->
+
+            <!-- ===================== Generalization (Contribution 3) ===================== -->
+            <div class="dataset-section" id="generalization">
+                <div class="dataset-header">
+                    <span class="dataset-tag" style="background: var(--accent-2);">Contribution&nbsp;③</span>
+                    <span class="dataset-name">Camera Generalization</span>
+                </div>
+                <p class="dataset-blurb">
+                    Because assignment and regression are decoupled, DisPOSE is <em>nearly
+                        agnostic</em> to the
+                    camera arrangement. Voxel-grid baselines collapse on unseen rigs; DisPOSE holds its ground and even
+                    <em>improves</em>
+                    as more views become available.
+                </p>
+
+                <div class="tab-system">
+                    <div class="dataset-tabs-wrap">
+                        <span class="dataset-tabs-label">View by</span>
+                        <div class="dataset-tabs dataset-subtabs" role="tablist" aria-label="Generalization view selector">
+                            <button class="dataset-tab-btn active" type="button" role="tab" id="panel-cam-setups-tab"
+                                data-target="panel-cam-setups" aria-controls="panel-cam-setups" aria-selected="true">
+                                <span class="dataset-tab-num">01</span><span>Different camera setups</span>
+                            </button>
+                            <button class="dataset-tab-btn" type="button" role="tab" id="panel-cam-counts-tab" data-target="panel-cam-counts"
+                                aria-controls="panel-cam-counts" aria-selected="false">
+                                <span class="dataset-tab-num">02</span><span>Varying camera count</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="dataset-panel active" id="panel-cam-setups" role="tabpanel" aria-labelledby="panel-cam-setups-tab">
+                        <p class="table-takeaway">
+                            <strong>Bottom line:</strong> on unseen rigs the baseline collapses to ~30% root mAP; DisPOSE stays above 69% on every setup.
+                        </p>
+                        <div class="table-wrapper">
+                            <table class="results-table">
+                                <caption>
+                                    <span class="caption-label">Table 4</span>
+                                    Pose estimation across four <strong>unseen camera arrangements</strong> on
+                                    CMU&nbsp;Panoptic. No fine-tuning. Best results in <strong>bold</strong>.
+                                </caption>
+                                <thead>
+                                    <tr>
+                                        <th rowspan="2">Setup / Method</th>
+                                        <th colspan="3" class="subhead">Root</th>
+                                        <th colspan="3" class="subhead">Pose</th>
+                                    </tr>
+                                    <tr>
+                                        <th>mAP ↑</th>
+                                        <th>Recall ↑</th>
+                                        <th>MDE ↓</th>
+                                        <th>mAP ↑</th>
+                                        <th>Recall ↑</th>
+                                        <th>MPJPE ↓</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="group-header">
+                                        <td colspan="7">CMU1 (7 cameras)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/CAMMA-public/SelfPose3d"
+                                                target="_blank" rel="noopener noreferrer">SelfPose3D</a></td>
+                                        <td>50.99</td>
+                                        <td>98.00</td>
+                                        <td>74.22</td>
+                                        <td>74.50</td>
+                                        <td>97.98</td>
+                                        <td>42.08</td>
+                                    </tr>
+                                    <tr class="ours">
+                                        <td>DisPOSE&nbsp;(Ours)</td>
+                                        <td class="best">73.42</td>
+                                        <td class="best">99.90</td>
+                                        <td class="best">46.34</td>
+                                        <td class="best">91.97</td>
+                                        <td class="best">99.92</td>
+                                        <td class="best">23.26</td>
+                                    </tr>
+
+                                    <tr class="group-header">
+                                        <td colspan="7">CMU2 (7 cameras)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/CAMMA-public/SelfPose3d"
+                                                target="_blank" rel="noopener noreferrer">SelfPose3D</a></td>
+                                        <td>32.31</td>
+                                        <td>94.58</td>
+                                        <td>115.13</td>
+                                        <td>59.06</td>
+                                        <td>94.32</td>
+                                        <td>67.90</td>
+                                    </tr>
+                                    <tr class="ours">
+                                        <td>DisPOSE&nbsp;(Ours)</td>
+                                        <td class="best">78.94</td>
+                                        <td class="best">99.52</td>
+                                        <td class="best">38.28</td>
+                                        <td class="best">83.01</td>
+                                        <td class="best">99.80</td>
+                                        <td class="best">30.44</td>
+                                    </tr>
+
+                                    <tr class="group-header">
+                                        <td colspan="7">CMU3 (4 cameras)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/CAMMA-public/SelfPose3d"
+                                                target="_blank" rel="noopener noreferrer">SelfPose3D</a></td>
+                                        <td>29.94</td>
+                                        <td>85.86</td>
+                                        <td>114.91</td>
+                                        <td>61.43</td>
+                                        <td>83.96</td>
+                                        <td>49.61</td>
+                                    </tr>
+                                    <tr class="ours">
+                                        <td>DisPOSE&nbsp;(Ours)</td>
+                                        <td class="best">69.20</td>
+                                        <td class="best">90.78</td>
+                                        <td class="best">43.37</td>
+                                        <td class="best">75.57</td>
+                                        <td class="best">90.75</td>
+                                        <td class="best">35.72</td>
+                                    </tr>
+
+                                    <tr class="group-header">
+                                        <td colspan="7">CMU4 (4 cameras)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/CAMMA-public/SelfPose3d"
+                                                target="_blank" rel="noopener noreferrer">SelfPose3D</a></td>
+                                        <td>31.19</td>
+                                        <td>97.92</td>
+                                        <td>132.07</td>
+                                        <td>62.85</td>
+                                        <td>98.32</td>
+                                        <td>72.91</td>
+                                    </tr>
+                                    <tr class="ours">
+                                        <td>DisPOSE&nbsp;(Ours)</td>
+                                        <td class="best">71.89</td>
+                                        <td class="best">99.86</td>
+                                        <td class="best">50.29</td>
+                                        <td class="best">87.02</td>
+                                        <td class="best">99.85</td>
+                                        <td class="best">28.10</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p>
+                            Across all four unseen rigs, SelfPose3D's root mAP collapses to 29&ndash;51%; DisPOSE stays
+                            above <span class="highlight-num">69%</span> on every setup and improves with denser arrays
+                            (70.5% on 4-cam &rarr; 76.2% on 7-cam average).
+                        </p>
+                    </div><!-- /panel-cam-setups -->
+
+                    <div class="dataset-panel" id="panel-cam-counts" role="tabpanel" aria-labelledby="panel-cam-counts-tab">
+                        <p class="table-takeaway">
+                            <strong>Bottom line:</strong> DisPOSE keeps improving as cameras are added; SelfPose3D plateaus after four views.
+                        </p>
+                        <div class="table-wrapper">
+                            <table class="results-table">
+                                <caption>
+                                    <span class="caption-label">Table 10</span>
+                                    Scaling on the standard CMU0 setup with a <strong>varying number of inference
+                                        cameras</strong> (3 / 4 / 6 / 7).
+                                    DisPOSE improves monotonically as more cameras are added; SelfPose3D plateaus around
+                                    4 views. Best results in <strong>bold</strong>.
+                                </caption>
+                                <thead>
+                                    <tr>
+                                        <th rowspan="2">Setup / Method</th>
+                                        <th colspan="3" class="subhead">Root</th>
+                                        <th colspan="3" class="subhead">Pose</th>
+                                    </tr>
+                                    <tr>
+                                        <th>mAP ↑</th>
+                                        <th>Recall ↑</th>
+                                        <th>MDE ↓</th>
+                                        <th>mAP ↑</th>
+                                        <th>Recall ↑</th>
+                                        <th>MPJPE ↓</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="group-header">
+                                        <td colspan="7">CMU0 ·3 views</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/CAMMA-public/SelfPose3d"
+                                                target="_blank" rel="noopener noreferrer">SelfPose3D</a></td>
+                                        <td>54.22</td>
+                                        <td>92.91</td>
+                                        <td>71.42</td>
+                                        <td>66.42</td>
+                                        <td>93.40</td>
+                                        <td>53.57</td>
+                                    </tr>
+                                    <tr class="ours">
+                                        <td>DisPOSE&nbsp;(Ours)</td>
+                                        <td class="best">76.68</td>
+                                        <td class="best">98.77</td>
+                                        <td class="best">40.82</td>
+                                        <td class="best">72.06</td>
+                                        <td class="best">98.83</td>
+                                        <td class="best">47.29</td>
+                                    </tr>
+
+                                    <tr class="group-header">
+                                        <td colspan="7">CMU0 ·4 views</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/CAMMA-public/SelfPose3d"
+                                                target="_blank" rel="noopener noreferrer">SelfPose3D</a></td>
+                                        <td>62.29</td>
+                                        <td>99.44</td>
+                                        <td>63.98</td>
+                                        <td>86.59</td>
+                                        <td>99.44</td>
+                                        <td>28.99</td>
+                                    </tr>
+                                    <tr class="ours">
+                                        <td>DisPOSE&nbsp;(Ours)</td>
+                                        <td class="best">79.26</td>
+                                        <td class="best">99.83</td>
+                                        <td class="best">39.36</td>
+                                        <td class="best">92.13</td>
+                                        <td class="best">99.85</td>
+                                        <td class="best">23.83</td>
+                                    </tr>
+
+                                    <tr class="group-header">
+                                        <td colspan="7">CMU0 ·6 views</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/CAMMA-public/SelfPose3d"
+                                                target="_blank" rel="noopener noreferrer">SelfPose3D</a></td>
+                                        <td>62.90</td>
+                                        <td>99.39</td>
+                                        <td>62.93</td>
+                                        <td>78.77</td>
+                                        <td>99.41</td>
+                                        <td>37.49</td>
+                                    </tr>
+                                    <tr class="ours">
+                                        <td>DisPOSE&nbsp;(Ours)</td>
+                                        <td class="best">80.42</td>
+                                        <td class="best">99.90</td>
+                                        <td class="best">37.29</td>
+                                        <td class="best">95.15</td>
+                                        <td class="best">99.91</td>
+                                        <td class="best">20.87</td>
+                                    </tr>
+
+                                    <tr class="group-header">
+                                        <td colspan="7">CMU0 ·7 views</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a class="method-link" href="https://github.com/CAMMA-public/SelfPose3d"
+                                                target="_blank" rel="noopener noreferrer">SelfPose3D</a></td>
+                                        <td>63.02</td>
+                                        <td>99.24</td>
+                                        <td>62.58</td>
+                                        <td>78.73</td>
+                                        <td>99.20</td>
+                                        <td>37.11</td>
+                                    </tr>
+                                    <tr class="ours">
+                                        <td>DisPOSE&nbsp;(Ours)</td>
+                                        <td class="best">80.41</td>
+                                        <td class="best">99.90</td>
+                                        <td class="best">37.34</td>
+                                        <td class="best">95.65</td>
+                                        <td class="best">99.91</td>
+                                        <td class="best">20.49</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p>
+                            DisPOSE scales monotonically with view count: pose mAP climbs from <span class="highlight-num">72.06</span> at 3 views
+                            to a peak of <span class="highlight-num">95.65</span> at 7 views, with MPJPE dropping from
+                            47.3 mm to 20.5 mm. 
+                            SelfPose3D peaks at 4 views and then <em>regresses</em> (86.59&nbsp;&rarr;&nbsp;78.77&nbsp;&rarr;&nbsp;78.73): more cameras hurt it.
+                        </p>
+                    </div><!-- /panel-cam-counts -->
+                </div><!-- /tab-system (camera generalization) -->
+            </div><!-- /generalization dataset-section -->
+
+            <!-- ===================== Efficiency (separate section) ===================== -->
+            <div class="dataset-section" id="efficiency">
+                <div class="dataset-header">
+                    <span class="dataset-tag" style="background: var(--text-soft);">Efficiency</span>
+                    <span class="dataset-name">Inference Latency &amp; GPU Memory</span>
+                </div>
+                <p class="dataset-blurb">
+                    Despite running a full diffusion-based assignment process, DisPOSE is <strong>3&ndash;4&times; faster</strong> than SelfPose3D across every view count, with modest memory growth.
+                    The differentiable Sinkhorn projection accounts for less than <strong>3%</strong> of total runtime.
+                </p>
+
+                <!-- ===== Efficiency card (paper Tables 17 & 18) ====================== -->
+                <div class="efficiency-card reveal">
+                    <div class="chart-header">
+                        <span class="chart-title">Efficiency&nbsp;&middot;&nbsp;DisPOSE vs SelfPose3D</span>
+                        <div class="chart-legend">
+                            <span><span class="swatch" style="background: var(--text-mute);"></span>SelfPose3D</span>
+                            <span><span class="swatch" style="background: var(--accent);"></span>DisPOSE</span>
+                        </div>
+                    </div>
+
+                    <div class="efficiency-grid">
+                        <div class="efficiency-panel">
+                            <h4>Inference latency&nbsp;<span style="color: var(--text-mute); font-weight: 400;">(ms,
+                                    lower is better)</span></h4>
+                            <span class="speedup">≈ 3&ndash;4&times; faster</span>
+                            <svg viewBox="0 0 440 260" role="img"
+                                aria-label="Inference latency at 3, 4, 5, 6 views — DisPOSE is 3 to 4 times faster than SelfPose3D">
+                                <line class="grid-line" x1="46" y1="224" x2="430" y2="224" />
+                                <text class="axis-text" x="40" y="227.5" text-anchor="end">0</text>
+                                <line class="grid-line" x1="46" y1="171" x2="430" y2="171" />
+                                <text class="axis-text" x="40" y="174.5" text-anchor="end">400 ms</text>
+                                <line class="grid-line" x1="46" y1="118" x2="430" y2="118" />
+                                <text class="axis-text" x="40" y="121.5" text-anchor="end">800 ms</text>
+                                <line class="grid-line" x1="46" y1="65" x2="430" y2="65" />
+                                <text class="axis-text" x="40" y="68.5" text-anchor="end">1200 ms</text>
+                                <line class="grid-line" x1="46" y1="12" x2="430" y2="12" />
+                                <text class="axis-text" x="40" y="15.5" text-anchor="end">1600 ms</text>
+                                <rect class="bar-baseline" x="62.1" y="29.0" width="30.7" height="195.0" rx="3" />
+                                <text class="value-label" x="77.4" y="25.0" text-anchor="middle">1472</text>
+                                <rect class="bar-ours" x="95.2" y="181.9" width="30.7" height="42.1" rx="3" />
+                                <text class="value-label" x="110.6" y="177.9" text-anchor="middle">318</text>
+                                <text class="group-label" x="94.0" y="242" text-anchor="middle">3 views</text>
+                                <rect class="bar-baseline" x="158.1" y="31.9" width="30.7" height="192.1" rx="3" />
+                                <text class="value-label" x="173.4" y="27.9" text-anchor="middle">1450</text>
+                                <rect class="bar-ours" x="191.2" y="174.2" width="30.7" height="49.8" rx="3" />
+                                <text class="value-label" x="206.6" y="170.2" text-anchor="middle">376</text>
+                                <text class="group-label" x="190.0" y="242" text-anchor="middle">4 views</text>
+                                <rect class="bar-baseline" x="254.1" y="29.5" width="30.7" height="194.5" rx="3" />
+                                <text class="value-label" x="269.4" y="25.5" text-anchor="middle">1468</text>
+                                <rect class="bar-ours" x="287.2" y="164.1" width="30.7" height="59.9" rx="3" />
+                                <text class="value-label" x="302.6" y="160.1" text-anchor="middle">452</text>
+                                <text class="group-label" x="286.0" y="242" text-anchor="middle">5 views</text>
+                                <rect class="bar-baseline" x="350.1" y="32.5" width="30.7" height="191.5" rx="3" />
+                                <text class="value-label" x="365.4" y="28.5" text-anchor="middle">1445</text>
+                                <rect class="bar-ours" x="383.2" y="155.9" width="30.7" height="68.1" rx="3" />
+                                <text class="value-label" x="398.6" y="151.9" text-anchor="middle">514</text>
+                                <text class="group-label" x="382.0" y="242" text-anchor="middle">6 views</text>
+                            </svg>
+                        </div>
+
+                        <div class="efficiency-panel">
+                            <h4>Peak GPU memory&nbsp;<span style="color: var(--text-mute); font-weight: 400;">(GiB,
+                                    lower is better)</span></h4>
+                            <svg viewBox="0 0 440 260" role="img"
+                                aria-label="Peak GPU memory at 3, 4, 5, 6 views — DisPOSE memory grows modestly with views">
+                                <line class="grid-line" x1="46" y1="224" x2="430" y2="224" />
+                                <text class="axis-text" x="40" y="227.5" text-anchor="end">0</text>
+                                <line class="grid-line" x1="46" y1="181.6" x2="430" y2="181.6" />
+                                <text class="axis-text" x="40" y="185.1" text-anchor="end">1 GiB</text>
+                                <line class="grid-line" x1="46" y1="139.2" x2="430" y2="139.2" />
+                                <text class="axis-text" x="40" y="142.7" text-anchor="end">2 GiB</text>
+                                <line class="grid-line" x1="46" y1="96.8" x2="430" y2="96.8" />
+                                <text class="axis-text" x="40" y="100.3" text-anchor="end">3 GiB</text>
+                                <line class="grid-line" x1="46" y1="54.4" x2="430" y2="54.4" />
+                                <text class="axis-text" x="40" y="57.9" text-anchor="end">4 GiB</text>
+                                <line class="grid-line" x1="46" y1="12" x2="430" y2="12" />
+                                <text class="axis-text" x="40" y="15.5" text-anchor="end">5 GiB</text>
+                                <rect class="bar-baseline" x="62.1" y="132.6" width="30.7" height="91.4" rx="3" />
+                                <text class="value-label" x="77.4" y="128.6" text-anchor="middle">2.1</text>
+                                <rect class="bar-ours" x="95.2" y="123.5" width="30.7" height="100.5" rx="3" />
+                                <text class="value-label" x="110.6" y="119.5" text-anchor="middle">2.3</text>
+                                <text class="group-label" x="94.0" y="242" text-anchor="middle">3 views</text>
+                                <rect class="bar-baseline" x="158.1" y="132.6" width="30.7" height="91.4" rx="3" />
+                                <text class="value-label" x="173.4" y="128.6" text-anchor="middle">2.1</text>
+                                <rect class="bar-ours" x="191.2" y="93.2" width="30.7" height="130.8" rx="3" />
+                                <text class="value-label" x="206.6" y="89.2" text-anchor="middle">3.0</text>
+                                <text class="group-label" x="190.0" y="242" text-anchor="middle">4 views</text>
+                                <rect class="bar-baseline" x="254.1" y="132.6" width="30.7" height="91.4" rx="3" />
+                                <text class="value-label" x="269.4" y="128.6" text-anchor="middle">2.1</text>
+                                <rect class="bar-ours" x="287.2" y="62.7" width="30.7" height="161.3" rx="3" />
+                                <text class="value-label" x="302.6" y="58.7" text-anchor="middle">3.7</text>
+                                <text class="group-label" x="286.0" y="242" text-anchor="middle">5 views</text>
+                                <rect class="bar-baseline" x="350.1" y="132.6" width="30.7" height="91.4" rx="3" />
+                                <text class="value-label" x="365.4" y="128.6" text-anchor="middle">2.1</text>
+                                <rect class="bar-ours" x="383.2" y="32.3" width="30.7" height="191.7" rx="3" />
+                                <text class="value-label" x="398.6" y="28.3" text-anchor="middle">4.4</text>
+                                <text class="group-label" x="382.0" y="242" text-anchor="middle">6 views</text>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="component-bar">
+                        <h4>Where the 452&nbsp;ms goes&nbsp;<span
+                                style="color: var(--text-mute); font-weight: 400;">(component share at 5 views)</span>
+                        </h4>
+                        <svg viewBox="0 0 800 64" role="img"
+                            aria-label="Component-wise latency at 5 views — 2D backbone 40.3%, Hypergraph decoder 13.7%, Diffusion denoise 9.0%, Sinkhorn projection 2.8%, Other 34.2%">
+                            <rect x="0" y="14" width="322.4" height="36" style="fill:var(--accent)" rx="2" />
+                            <text x="161.2" y="36" text-anchor="middle" font-family="JetBrains Mono, monospace"
+                                font-size="11" font-weight="600" fill="#fff">40.3%</text>
+                            <rect x="322.4" y="14" width="109.6" height="36" style="fill:var(--accent-2)" rx="2" />
+                            <text x="377.2" y="36" text-anchor="middle" font-family="JetBrains Mono, monospace"
+                                font-size="11" font-weight="600" fill="#fff">13.7%</text>
+                            <rect x="432.0" y="14" width="72.0" height="36" style="fill:var(--chart-teal)" rx="2" />
+                            <text x="468.0" y="36" text-anchor="middle" font-family="JetBrains Mono, monospace"
+                                font-size="11" font-weight="600" fill="#fff">9.0%</text>
+                            <rect x="504.0" y="14" width="22.4" height="36" style="fill:var(--chart-amber)" rx="2" />
+                            <rect x="526.4" y="14" width="273.6" height="36" style="fill:var(--text-mute)" rx="2" />
+                            <text x="663.2" y="36" text-anchor="middle" font-family="JetBrains Mono, monospace"
+                                font-size="11" font-weight="600" fill="#fff">34.2%</text>
+                        </svg>
+                        <div class="component-legend">
+                            <span><span class="swatch" style="background: var(--accent);"></span>2D Backbone</span>
+                            <span><span class="swatch" style="background: var(--accent-2);"></span>Hypergraph Decoder</span>
+                            <span><span class="swatch" style="background: var(--chart-teal);"></span>Diffusion Denoise</span>
+                            <span><span class="swatch" style="background: var(--chart-amber);"></span>Sinkhorn Projection
+                                (2.8%)</span>
+                            <span><span class="swatch" style="background: var(--text-mute);"></span>Other</span>
+                        </div>
+                    </div>
+
+                    <p class="chart-footnote">
+                        Measured on a single NVIDIA&nbsp;A40, CMU&nbsp;Panoptic, batch size&nbsp;8 (paper Tables&nbsp;17
+                        &amp; 18).
+                        The differentiable Sinkhorn projection costs 2.8&ndash;3.0% of total runtime;
+                        &ldquo;Other&rdquo; groups all remaining operations (data movement, I/O, and post-processing).
+                    </p>
+                </div>
+            </div>
+
+            <!-- ===================== Qualitative ===================== -->
+            <div class="dataset-section">
+                <div class="dataset-header">
+                    <span class="dataset-tag" style="background: var(--text-soft);">Qualitative</span>
+                    <span class="dataset-name">Side-by-side comparisons</span>
+                </div>
+
+                <figure class="figure qual-figure">
+                    <div class="qual-pair">
+                        <img src="./static/images/qual_panoptic_sp3d.webp"
+                            alt="SelfPose3D on CMU Panoptic: misses the toddler crawling on the ground."
+                            width="1280" height="840" loading="lazy" decoding="async" />
+                        <img src="./static/images/qual_panoptic_ours.webp"
+                            alt="DisPOSE on CMU Panoptic: recovers the crawling toddler."
+                            width="1280" height="838" loading="lazy" decoding="async" />
+                    </div>
+                    <figcaption class="fig-caption">
+                        <strong>Out-of-distribution generalization on CMU Panoptic.</strong>
+                        <span style="color:var(--danger);font-weight:600">Red</span> is the ground-truth pose.
+                        <span style="font-weight:600">SelfPose3D</span> (left)
+                        <span style="color:var(--danger);font-weight:600">misses</span> the crawling toddler — its
+                        <span style="color:var(--danger)">red</span> ground truth is left unmatched, a result of training
+                        on synthetic adult pose catalogues.
+                        <span style="color:var(--accent);font-weight:600">DisPOSE</span> (right) detects and
+                        articulates it.
+                    </figcaption>
+                </figure>
+                <figure class="figure qual-figure">
+                    <div class="qual-pair">
+                        <img src="./static/images/qual_mm_or_sp3d.webp"
+                            alt="SelfPose3D on MM-OR Pose: fails on the bending surgeon."
+                            width="1280" height="644" loading="lazy" decoding="async" />
+                        <img src="./static/images/qual_mm_or_ours.webp"
+                            alt="DisPOSE on MM-OR Pose: recovers both surgeons under occlusion."
+                            width="1280" height="642" loading="lazy" decoding="async" />
+                    </div>
+                    <figcaption class="fig-caption">
+                        <strong>MM-OR Pose, a bending surgeon.</strong>
+                        <span style="font-weight:600">SelfPose3D</span> (left)
+                        <span style="color:var(--danger);font-weight:600">fails</span> on the non-canonical bent-over
+                        posture. <span style="color:var(--accent);font-weight:600">DisPOSE</span> (right) recovers
+                        both surgeons despite severe occlusion from sterile gowns and surgical helmets.
+                    </figcaption>
+                </figure>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== Limitations ===================== -->
+    <section class="section reveal" id="limitations">
+        <div class="container">
+            <div class="section-title-block">
+                <h2>Limitations &amp; Future Work</h2>
+            </div>
+
+            <div class="limit-grid">
+                <div class="limit-card">
+                    <div class="limit-card-header">
+                        <span class="limit-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M12 6 L12 12 L16 14"></path>
+                            </svg>
+                        </span>
+                        <span class="limit-num">Limitation 1</span>
+                    </div>
+                    <h3 class="limit-title">No temporal modeling</h3>
+                    <p class="limit-body">
+                        Frames are processed independently; motion continuity is unused. 
+                        Temporal trajectory priors are a natural next step.
+                    </p>
+                </div>
+
+                <div class="limit-card">
+                    <div class="limit-card-header">
+                        <span class="limit-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">
+                                <path d="M2 12 C 5 6, 10 4, 12 4 S 19 6, 22 12 C 19 18, 14 20, 12 20 S 5 18, 2 12 Z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <line x1="3" y1="3" x2="21" y2="21"></line>
+                            </svg>
+                        </span>
+                        <span class="limit-num">Limitation 2</span>
+                    </div>
+                    <h3 class="limit-title">Single-view occlusion</h3>
+                    <p class="limit-body">
+                        A person visible in only one camera cannot be triangulated, and therefore cannot be reconstructed.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== Lightbox ===================== -->
+    <div id="lightbox" role="dialog" aria-hidden="true" aria-modal="true">
+        <button class="lightbox-close" type="button" aria-label="Close enlarged view">&times;</button>
+        <div class="lightbox-inner">
+            <img src="" alt="" />
+            <div class="lightbox-caption"></div>
+        </div>
+    </div>
+
+    <!-- ===================== BibTeX ===================== -->
+    <section class="section reveal" id="bibtex">
+        <div class="container">
+            <div class="section-title-block">
+                <h2>BibTeX</h2>
+            </div>
+            <div class="bibtex-container">
+                <button class="copy-btn" id="copy-bib" aria-label="Copy BibTeX to clipboard">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    <span class="copy-label">Copy</span>
+                </button>
+                <pre><code>@inproceedings{wang2026dispose,
+    title     = {DisPOSE: Projected Polystochastic Diffusion for
+                 Self-Supervised Multi-View 3D Human Pose Estimation},
+    author    = {Wang, Tony Danjun and Birdal, Tolga and
+                 Navab, Nassir and Bastian, Lennart},
+    booktitle = {Proceedings of the 43rd International Conference on
+                 Machine Learning},
+    series    = {Proceedings of Machine Learning Research},
+    publisher = {PMLR},
+    year      = {2026},
+}</code></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== Footer ===================== -->
+    <footer class="footer reveal">
+        <div class="container">
+            <p>
+                Contact <a href="https://wngtn.github.io" target="_blank" rel="noopener noreferrer">Tony Danjun Wang</a>
+                &middot; <a href="mailto:tony.wang@tum.de">tony.wang@tum.de</a>
+            </p>
+        </div>
+    </footer>
+
+    <!-- ===================== GDPR banner ===================== -->
+    <div id="gdpr-banner" role="region" aria-label="Privacy notice" aria-live="polite">
+        <span>
+            This site is hosted on GitHub Pages. GitHub may collect anonymous analytics &amp; security data.
+            <a href="https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement" target="_blank"
+                rel="noopener noreferrer">Privacy policy</a>.
+        </span>
+        <button id="accept-gdpr" type="button">I understand</button>
+    </div>
+
+    <script defer src="./static/js/main.js?v=3"></script>
+</body>
+
+</html>

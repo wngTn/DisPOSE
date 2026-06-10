@@ -1,0 +1,81 @@
+# 1. Defaults must be at the top level
+defaults:
+    - /data/augmentations@train_cfg.dataset.transforms: standard_augmentations
+    - /data/augmentations@val_cfg.dataset.transforms: no_augmentations
+    - _self_
+
+_target_: src.data.joint_datamodule.JointDataModule
+
+train_cfg:
+    loader_params:
+        num_workers: 10
+        pin_memory: True
+        persistent_workers: True
+
+    batch_sampler:
+        # batch_size lives in the task config — see note in configs/data/Panoptic.yaml.
+        _target_: src.data.samplers.CommonSampler
+        _partial_: True
+        random: True
+
+    # Parameters for the Dataset
+    dataset:
+        _target_: src.data.datasets.ShelfDataset
+        _partial_: True
+        loader:
+            _target_: src.data.datasets.shelf_utils.PseudoGTDataLoader
+            _partial_: True
+            label_file: "./data/preparation/shelf/2026_06_04_13_24_train/panoptic_2026_06_04_13_24_pseudo_labels.pkl"
+            min_visible_joints: 12
+        collate_fn:
+            _target_: src.data.collate_fn.custom_collate
+            _partial_: True
+        data_dir: "./data/shelf"
+        augmentations:
+            scale_factors: [0.35, 0.35]
+            rotation_factors: [45, 45]
+            flip_factors: [False, False]
+        num_temporal: 1
+        interval: 1
+        camera_setup: "Shelf5"
+        skeleton_type: "panoptic"
+        image_size: [800, 608]
+        heatmap_size: [200, 152]
+        sequences: ["defalta"]
+
+val_cfg:
+    loader_params:
+        num_workers: 12
+        pin_memory: True
+        persistent_workers: True
+
+    batch_sampler:
+        # See note in train_cfg.batch_sampler.
+        _target_: src.data.samplers.InferenceSampler
+        _partial_: True
+        shuffle: False
+
+    # Parameters for the Dataset
+    dataset:
+        _target_: src.data.datasets.ShelfDataset
+        _partial_: True
+        loader:
+            _target_: src.data.datasets.shelf_utils.GTDataLoader
+            _partial_: True
+        collate_fn:
+            _target_: src.data.collate_fn.custom_collate
+            _partial_: True
+        data_dir: "./data/shelf"
+        augmentations:
+            scale_factors: []
+            rotation_factors: []
+            flip_factors: []
+        num_temporal: 1
+        interval: 1
+        camera_setup: "Shelf5"
+        skeleton_type: "shelf"
+        image_size: [800, 608]
+        heatmap_size: [200, 152]
+        sequences: ["defalta"]
+
+test_cfg:

@@ -1,0 +1,78 @@
+# @package _global_
+#
+# Backbone pretraining: trains the PoseResNet50 to produce per-joint heatmaps
+# adapted to the dataset distribution (BN running stats included). Used as the
+# starting point for `task=pose`. Sparse pseudo-GT is handled by the asymmetric
+# heatmap loss — see configs/model/Heatmap.yaml.
+#
+# Initialization: the dataset config sets `model.backbone.ckpt_path` to the
+# *already-fine-tuned* dataset-specific backbone (used by `task=pose`). For
+# backbone fine-tuning, we need to start from the panoptic backbone instead —
+# override here so every `task=backbone` run on shelf/campus/mm_or initializes
+# from the panoptic checkpoint. Override on the CLI for from-scratch training
+# (e.g. `task=backbone dataset=panoptic model.backbone.ckpt_path=null`).
+
+defaults:
+  - /model: Heatmap
+
+task: "Backbone"
+
+model:
+  backbone:
+    ckpt_path: "checkpoints/backbone/panoptic/pose_resnet50.pt"
+  # Pose-output metrics (PCP, regression, regression-viz, RootMetrics) don't apply
+  # to backbone-only training — there's no regressor and no 3D-root predictor here,
+  # so clear any dataset-config additions of those.
+  metric:
+    RegressionMetrics: null
+    RegressionVisualizationMetrics: null
+    PCPMetrics: null
+    RootMetrics: null
+
+trainer:
+  max_steps: 20_000
+  val_check_interval: 1_000
+  devices: 2
+  strategy: ddp
+  sync_batchnorm: true
+  use_distributed_sampler: false                 # CommonSampler / InferenceSampler are DDP-aware
+
+data:
+  train_cfg:
+    batch_sampler:
+      batch_size: 8                              # per-GPU; effective batch = 16 across 2 GPUs
+    dataset:
+      # A=1 with random spatial augmentation: the cross-affine pose loss isn't active
+      # for backbone training, so we don't need an identity anchor slot — every sample
+      # gets one randomly rotated/scaled/flipped copy. Color/contrast/cutout transforms
+      # (`/data/augmentations` defaults) still apply on top.
+      include_identity_slot: false
+      augmentations:
+        scale_factors: [0.35]
+        rotation_factors: [45]
+        flip_factors: [false]
+  val_cfg:
+    batch_sampler:
+      batch_size: 4
+    dataset:
+      include_identity_slot: true                # validation = identity (no random aug)
+      augmentations:
+        scale_factors: []
+        rotation_factors: []
+        flip_factors: []
+
+callbacks:
+  # We're training on pseudo-labels, so a metric-best checkpoint is misleading
+  # (it picks the snapshot that best fits the noisy targets, not real labels).
+  # Only keep `last.ckpt`; the user always extracts that one.
+  model_checkpoint:
+    monitor: null
+    save_top_k: 0
+    save_last: true
+    filename: null
+  heatmap_viz:
+    _target_: src.callbacks.heatmap_viz.HeatmapVisualizationCallback
+    num_frames: 20
+
+logger:
+  project: "DisPOSE_Backbone"                    # dataset is logged as a tag from the dataset config

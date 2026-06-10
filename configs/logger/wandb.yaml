@@ -1,0 +1,10 @@
+_target_: lightning.pytorch.loggers.WandbLogger
+
+save_dir: "${paths.output_dir}"
+offline: false
+id: null
+project: "DisPOSE"
+name: "${task_name}"
+tags: []
+group: ""
+log_model: true

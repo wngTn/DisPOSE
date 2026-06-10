@@ -1,0 +1,29 @@
+_target_: src.models.nets.RootRegressionNet
+camera_setup: "${camera_setup}"
+heatmap_size: "${data.train_cfg.dataset.heatmap_size}"
+alpha: -1.0                               # Sinkhorn dustbin prior; the task config supplies the trained value (configs/task/pose.yaml)
+px_threshold: 64
+num_timesteps: 1000
+skh_iterations: 4
+sampling_timesteps: 10
+matcher_threshold: 0.001
+
+proj_attn_cfg:
+    n_heads: 8
+    n_points: 8
+    sampling_mode: deformable
+
+denoiser_cfg:
+    # Intentionally narrow denoiser (d_model=192, num_layers=2): a low-capacity width prior
+    # discourages a static-scorer shortcut and encourages reliance on the diffusion iterations.
+    d_model: 192
+    num_layers: 2
+    # Scales the static node/edge features (X_v, z_cue) by sqrt(1 − α̅_t) inside the
+    # denoiser, so high-noise steps see strong static cues while low-noise steps must
+    # rely on x_t, preventing the denoiser from collapsing into a static scorer that
+    # ignores the diffusion state.
+    noise_gate_static_conditioning: true
+    # Floor for the static-cue scale: scale = floor + (1 − floor) · sqrt(1 − α̅_t).
+    # floor=0.0 fully gates static cues at the clean endpoint; floor>0 keeps a minimum
+    # cue strength.
+    noise_gate_static_floor: 0.0

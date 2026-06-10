@@ -1,0 +1,88 @@
+# @package _global_
+
+defaults:
+  - /data: MM_OR
+
+camera_setup: "MMOR5"
+
+# MM-OR pose is warm-started from the fully-trained panoptic_pose weights
+# (assignment + regressor; the backbone stays the dataset-adapted one below).
+# Strip backbone.* from panoptic_pose `last.ckpt` and re-save here if you retrain
+# panoptic_pose. We keep max_steps at the from-scratch 25k because MM-OR is the
+# largest / most-different dataset and benefits from more fine-tune steps.
+init_ckpt_path: "checkpoints/warmstart/panoptic_pose_no_backbone.pt"
+
+trainer:
+  max_steps: 25_000                              # longer fine-tune for MM-OR
+
+model:
+  warmup_steps: 500                              # shorter warmup; weights aren't random
+  scheduler:
+    T_max: 25_000                                # keep cosine in sync with trainer.max_steps
+
+  backbone:
+    # Fine-tuned from the panoptic backbone via `task=backbone dataset=mm_or`
+    # (with strict heatmap_supervise_unmatched=false; see this config below).
+    ckpt_path: "checkpoints/backbone/mm_or/pose_resnet50.pt"
+    conf_threshold: 0.15                         # lower than the 0.2 default to accept more borderline OR detections
+
+  # RootMetrics: assignment-decoded XYZ → MDE / MAP / Pseudo_mde / Pseudo_map / R@500.
+  # RegressionMetrics: refined poses → MPJPE / AP@{25..150} / R@500.
+  metric:
+    RootMetrics:
+      _target_: src.metrics.RootMetrics
+      root_idx: 2
+    RegressionMetrics:
+      _target_: src.metrics.RegressionMetrics
+
+  # Keep unmatched 2D detections (people without a 3D correspondence) in the heatmap
+  # supervision. The patient (elevated-foot filter) and static equipment/monitors
+  # (per-sequence forbidden polygons) are already culled during pseudo-label
+  # generation, so the remaining unmatched detections are real people worth keeping.
+  losses:
+    heatmap_supervise_unmatched: true
+
+  space_configuration:
+    space_size: [5000, 6000, 2000]
+    space_center: [-500, 0, 1000]
+
+data:
+  train_cfg:
+    batch_sampler:
+      batch_size: 2                              # per-GPU; 0.90x panoptic per-sample
+    dataset:
+      camera_setup: "${camera_setup}"
+      sequences:
+        [
+          "001_PKA",
+          "002_PKA",
+          "003_TKA",
+          "006_PKA",
+          "007_TKA",
+          "008_PKA",
+          "010_PKA",
+          "012_PKA",
+          "013_PKA",
+          "014_PKA",
+          "015-018_PKA",
+          "019-022_PKA",
+          "023-032_PKA",
+          "033_PKA",
+          "035_PKA",
+          "037_TKA",
+        ]
+
+  val_cfg:
+    dataset:
+      camera_setup: "${camera_setup}"
+      sequences: ["004_PKA", "011_TKA", "036_PKA"]
+
+logger:
+  tags: ["mm_or"]
+
+# task=pose: select best by regression mAP. task=backbone: ignored (task config
+# overrides this to save_top_k=0 + save_last=true).
+callbacks:
+  model_checkpoint:
+    monitor: "val/RegressionMetrics_MAP"
+    filename: "best-map-step={step:06d}"

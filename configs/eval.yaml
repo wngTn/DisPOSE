@@ -1,0 +1,20 @@
+# @package _global_
+
+defaults:
+  - _self_
+  - dataset: null       # REQUIRED: panoptic, shelf, campus, mm_or
+  - task: null          # REQUIRED: pose, backbone (task overrides take precedence over dataset)
+  - trainer: eval
+  - callbacks: none
+  - logger: wandb
+  - paths: default
+  - hydra: eval
+
+task_name: "eval"
+seed: 925
+deterministic: true
+
+visualize: false
+
+# Checkpoint to evaluate (Lightning .ckpt or legacy .pt)
+ckpt_path: null

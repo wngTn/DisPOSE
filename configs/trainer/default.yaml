@@ -1,0 +1,25 @@
+_target_: lightning.Trainer
+
+# Training duration (purely step-based, no epoch boundaries)
+max_epochs: -1
+max_steps: 50_000
+val_check_interval: 2_500
+check_val_every_n_epoch: null
+
+# Hardware
+accelerator: auto
+devices: auto
+strategy: auto
+
+# Precision
+precision: 32-true
+
+# Gradient clipping (null to disable)
+gradient_clip_val: null
+
+# Logging
+log_every_n_steps: 50
+enable_progress_bar: true
+
+# Output
+default_root_dir: ${paths.output_dir}

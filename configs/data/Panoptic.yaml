@@ -1,0 +1,98 @@
+# 1. Defaults must be at the top level
+defaults:
+  - /data/augmentations@train_cfg.dataset.transforms: standard_augmentations
+  - /data/augmentations@val_cfg.dataset.transforms: no_augmentations
+  - _self_
+
+_target_: src.data.joint_datamodule.JointDataModule
+
+train_cfg:
+    loader_params:
+        num_workers: 10
+        pin_memory: True
+        persistent_workers: True
+
+    batch_sampler:
+        # batch_size lives in the task config (configs/task/*.yaml) since each task
+        # has its own per-GPU memory profile. Setting it here would clobber task overrides
+        # because dataset configs load after task configs in train.yaml's defaults list.
+        _target_: src.data.samplers.CommonSampler
+        _partial_: True
+        random: True
+
+    # Parameters for the Dataset
+    dataset:
+        _target_: src.data.datasets.PanopticDataset
+        _partial_: True
+        loader:
+            _target_: src.data.datasets.panoptic_utils.PseudoGTDataLoader
+            _partial_: True
+            label_file: "./data/preparation/panoptic/2026_06_03_15_47_train/panoptic_2026_06_03_15_47_pseudo_labels.pkl"
+            min_visible_joints: 12
+        collate_fn: 
+            _target_: src.data.collate_fn.custom_collate
+            _partial_: True
+        data_dir: "./data/panoptic"
+        augmentations:
+            scale_factors: [0.35, 0.35]
+            rotation_factors: [45, 45]
+            flip_factors: [False, False]
+        num_temporal: 1
+        interval: 3
+        camera_setup: "CMU0"
+        skeleton_type: "panoptic"
+        image_size: [960, 512]
+        heatmap_size: [240, 128]
+        sequences: [
+            "160422_ultimatum1",
+            "160224_haggling1",
+            "160226_haggling1",
+            "161202_haggling1",
+            "160906_ian1",
+            "160906_ian2",
+            "160906_ian3",
+            "160906_band1",
+            "160906_band2",
+        ]
+
+val_cfg:
+    loader_params:
+        num_workers: 12
+        pin_memory: True
+        persistent_workers: True
+
+    batch_sampler:
+        # See note on train_cfg.batch_sampler — batch_size lives in the task config.
+        _target_: src.data.samplers.InferenceSampler
+        _partial_: True
+        shuffle: False
+        
+    # Parameters for the Dataset
+    dataset:
+        _target_: src.data.datasets.PanopticDataset
+        _partial_: True
+        loader:
+            _target_: src.data.datasets.panoptic_utils.GTDataLoader
+            _partial_: True
+        collate_fn: 
+            _target_: src.data.collate_fn.custom_collate
+            _partial_: True
+        data_dir: "./data/panoptic"
+        augmentations:
+            scale_factors: []
+            rotation_factors: []
+            flip_factors: []
+        num_temporal: 1
+        interval: 12
+        camera_setup: "CMU0"
+        skeleton_type: "panoptic"
+        image_size: [960, 512]
+        heatmap_size: [240, 128]
+        sequences: [
+            "160906_pizza1",
+            "160422_haggling1",
+            "160906_ian5",
+            "160906_band4",
+        ]
+
+test_cfg:

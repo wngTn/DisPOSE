@@ -1,0 +1,45 @@
+# @package _global_
+
+defaults:
+  - _self_
+  - trainer: default
+  - callbacks: default
+  - logger: wandb
+  - paths: default
+  - hydra: default
+  - dataset: null       # REQUIRED: panoptic, shelf, campus, mm_or (introduces /data, dataset-specific defaults)
+  - task: null          # REQUIRED: pose, backbone (introduces /model; task overrides take precedence over dataset)
+
+# Task name — used for output directory and W&B run name
+task_name: "default"
+
+# Seed for reproducibility
+seed: 925
+deterministic: false
+
+# Optional: overlay pretrained weights on top of the freshly-instantiated model
+# (strict=False). Useful for warm-starting one dataset's pose model from
+# another's. The model's backbone is loaded first via model.backbone.ckpt_path,
+# then this checkpoint overlays whatever keys it provides — strip backbone.*
+# from this file if you want to preserve the dataset-adapted backbone.
+init_ckpt_path: null
+
+# Optional: full Lightning checkpoint to resume training from (loads model
+# weights + optimizer/scheduler state + global_step + epoch). Different from
+# init_ckpt_path, which only overlays weights and starts step 0.
+ckpt_path: null
+
+# Resume a previous run by pointing at its output directory: it loads that run's
+# saved config and continues in place, selecting the checkpoint named by
+# restore_hint ("last" or "best"). Unlike a bare ckpt_path, this rebuilds the full
+# config from the run, so dataset/task/task_name need not be re-specified. These
+# keys are intentionally NOT declared here — pass them with a leading '+' so they
+# are absent on normal runs (hydra.run.dir falls back to ${task}/${task_name}):
+#   python src/train.py +restore_from=logs/Pose/<run> +restore_hint=last
+
+# Usage:
+#   python src/train.py dataset=panoptic task=pose task_name=my_run
+#   python src/train.py dataset=panoptic task=backbone task_name=backbone_pretrain
+#
+# CLI overrides:
+#   trainer.max_steps=10000 data.train_cfg.batch_sampler.batch_size=2

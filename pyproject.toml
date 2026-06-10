@@ -1,0 +1,101 @@
+[project]
+name = "DisPOSE"
+version = "0.1.0"
+description = "DisPOSE"
+readme = "README.md"
+
+# Avoid pinning to an exact patch. Still effectively 3.11 only.
+requires-python = ">=3.11.12,<3.12"
+
+dependencies = [
+  "addict>=2.4.0",
+  "easydict>=1.13",
+  "einops==0.8.1",
+  "hydra-colorlog",
+  "hydra-core",
+  "imageio[ffmpeg]",
+  "matplotlib==3.9.2",
+  "open3d==0.18.0",
+  "opencv-python>=4.12.0.88",
+  "peft>=0.17.1",
+  "pulp>=3.0",
+  "pytorch-warmup>=0.2.0",
+  "rootutils",
+  "seaborn>=0.13.2",
+  "shapely>=2.0",
+  "timm>=1.0.19",
+  "torch-geometric>=2.6.1",
+  "torchmetrics==1.7.2",
+  "triton==3.3.1; sys_platform == 'linux'",
+  "transformers>=4.51.3",
+  "trimesh>=4.6.8",
+  "ninja>=1.13.0",
+  "wandb[media]>=0.22.2",
+  "torch==2.7.1",
+  "torchvision==0.22.1",
+  "lightning>=2.6.1",
+]
+
+[project.optional-dependencies]
+# preparation/ delegates pose association + triangulation to the COMPOSE library.
+# Install with:  GIT_LFS_SKIP_SMUDGE=1 uv pip install --no-deps "compose @ git+https://github.com/wngTn/COMPOSE.git"
+# (--no-deps: COMPOSE pins torch>=2.7 only for Blackwell GPUs; its code runs on this
+#  project's torch, and the photometric/torchreid cue is unused — geometric-only.
+#  GIT_LFS_SKIP_SMUDGE skips COMPOSE's bundled LFS test data, not needed by the package.)
+prep = ["compose", "gdown>=5.2.0"]
+
+[dependency-groups]
+dev = [
+  "ipdb>=0.13.13",
+  "nvitop>=1.5.3",
+  "yapf>=0.43.0",
+  "ruff",
+  "pyright",
+]
+
+[tool.uv]
+environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'linux' and platform_machine == 'aarch64'",
+]
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cu128", marker = "platform_machine == 'x86_64'" },
+  { index = "pytorch-cu128", marker = "platform_machine == 'aarch64'" },
+]
+torchvision = [
+  { index = "pytorch-cu128", marker = "platform_machine == 'x86_64'" },
+  { index = "pytorch-cu128", marker = "platform_machine == 'aarch64'" },
+]
+triton = [
+  { index = "pytorch-cu128", marker = "platform_machine == 'x86_64'" },
+  # Force uv to pull the source code from GitHub for ARM and compile it
+  { git = "https://github.com/triton-lang/triton", tag = "v3.3.1", subdirectory = "python", marker = "platform_machine == 'aarch64'" },
+]
+
+compose = { git = "https://github.com/wngTn/COMPOSE.git" }
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+ignore = ["E402", "F821"]
+
+[tool.ruff.lint.per-file-ignores]
+# Package __init__ files re-export the public API; the imports are intentional.
+"__init__.py" = ["F401"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.pyright]
+reportUnboundVariable = "none"
+include = ["src"]
+exclude = ["**/__pycache__", "./data", "./logs"]

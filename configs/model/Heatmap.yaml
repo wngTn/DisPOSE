@@ -1,0 +1,50 @@
+_target_: src.models.dispose_module.DisPOSE
+
+defaults:
+  - /model/Backbone@backbone: ResNet
+  - _self_
+
+assignment: null
+regressor: null
+warmup_steps: 1_000
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: True
+  lr: 0.0001
+  weight_decay: 0.0
+  betas: [0.9, 0.999]
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+  _partial_: True
+  T_max: 20_000                                  # keep in sync with trainer.max_steps in the task config
+  eta_min: 1.0e-6
+
+metric:
+  HeatMapMetrics:
+    _target_: src.metrics.HeatMapL2
+    sigma: 3.0
+    image_size: "${data.train_cfg.dataset.image_size}"
+    heatmap_size: "${data.train_cfg.dataset.heatmap_size}"
+  HeatMapRegressionMetrics:
+    _target_: src.metrics.HeatMapRegressionMetrics
+
+losses:
+  _target_: src.losses.loss.Loss
+  cfg:
+    Heatmap_Loss:
+      lambda: 1.0
+      type:
+        _target_: src.losses.HeatmapLoss
+        image_size: "${data.train_cfg.dataset.image_size}"
+        heatmap_size: "${data.train_cfg.dataset.heatmap_size}"
+        sigma: 3.0
+        # Asymmetric MSE — full weight for underprediction at GT keypoints,
+        # bg_weight for overprediction. Small enough not to punish unlabeled
+        # real people, large enough to suppress firing at mirrors / reflections.
+        # bg_weight=1.0 recovers standard symmetric MSE.
+        bg_weight: 0.1
+
+freeze: []
+space_configuration: null

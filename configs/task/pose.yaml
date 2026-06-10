@@ -1,0 +1,79 @@
+# @package _global_
+#
+# End-to-end joint training of the assignment diffusion model + the regressor on
+# top of a frozen, panoptic-adapted backbone. This is the single training mode
+# that produces the deliverable pose model.
+#
+# Reproduction recipe (Panoptic):
+#   1. Train the panoptic backbone (heatmap supervision, 20k steps) — see configs/task/backbone.yaml:
+#
+#        python src/train.py dataset=panoptic task=backbone task_name=panoptic_backbone \
+#            model.backbone.ckpt_path=null
+#
+#      Save the resulting backbone weights to checkpoints/backbone/panoptic/pose_resnet50.pt
+#      (extract only the heatmap-producing layers — BN running stats matter).
+#
+#   2. Train the joint pose model on top of the frozen backbone:
+#
+#        sbatch --gpus=2 --mem=96G --time=2-00:00:00 --wrap=".venv/bin/python src/train.py \
+#            dataset=panoptic task=pose task_name=panoptic_pose \
+#            data.train_cfg.dataset.interval=1"
+#
+# Validation logs both metric families:
+#   - val/RootMetrics_*        — MDE, MAP (mAP), Pseudo_mde, Pseudo_map (Pseudo_mAP), AP@50, Recall@500
+#   - val/RegressionMetrics_*  — MPJPE, MAP, AP@{25,50,75,100,125,150}, Recall@{...}, Recall@500
+
+defaults:
+  - /model: Pose
+
+task: "Pose"
+
+trainer:
+  # max_steps lives in the dataset config — datasets vary between from-scratch
+  # (25k) and warm-start (15k) training schedules.
+  val_check_interval: 1_000
+  # Slightly above 1.0: the joint forward backprops through both the assignment diffusion
+  # losses and the regressor's per-stage heatmap losses, and a 1.0 clip was too tight (it
+  # destabilized the strict-precision regression metrics).
+  gradient_clip_val: 1.1
+  # Joint training (frozen backbone + assignment + regressor + 4-stage deep supervision)
+  # is memory-heavy. With bs=2 per-GPU we fit comfortably under 44 GiB and DDP across
+  # 2 GPUs gives an effective batch of 4 without changing per-GPU memory. CommonSampler
+  # / InferenceSampler are already DDP-aware (detect world_size/rank and shard the
+  # index pool), and torchmetrics aggregates validation states across ranks. Override
+  # `trainer.devices=1 trainer.strategy=auto` for single-GPU runs.
+  devices: 2
+  # `find_unused_parameters_true` is needed because the joint forward has conditional
+  # paths (e.g. assignment-net branches that aren't always exercised at training time),
+  # so DDP's default eager bucket-building rejects steps where a parameter receives no
+  # gradient. Slight per-step overhead for parameter discovery, correct in all cases.
+  strategy: ddp_find_unused_parameters_true
+  # Our batch samplers handle DDP sharding themselves (see src/data/samplers.py); tell
+  # Lightning not to try to inject a DistributedSampler — its auto-wrap path requires
+  # subclassing torch.utils.data.BatchSampler, which we don't, and would double-shard.
+  use_distributed_sampler: false
+
+data:
+  # Train batch_size lives in the dataset config — datasets differ in image size
+  # and camera count, so per-GPU memory cost varies by ~1.5x between them.
+  # See configs/dataset/{panoptic,mm_or,shelf,campus}.yaml.
+  val_cfg:
+    batch_sampler:
+      batch_size: 8                              # per-GPU; validation is sharded across ranks
+
+model:
+  # scheduler.T_max + warmup_steps + optimizer.lr live in the dataset config.
+  # See configs/dataset/{panoptic,mm_or,shelf,campus}.yaml.
+  assignment:
+    alpha: 0.6607                                # pre-converged Sinkhorn dustbin prior; fixing it skips slow online alpha learning
+
+callbacks:
+  # ModelCheckpoint monitor lives in the dataset config (dataset composes BEFORE
+  # task, so per-dataset checkpoint targets can't be overridden from this file).
+  # See configs/dataset/{panoptic,mm_or,shelf,campus}.yaml.
+  pose_viz:
+    _target_: src.callbacks.pose_viz.PoseVisualizationCallback
+    num_frames: 20
+
+logger:
+  project: "DisPOSE_Pose"

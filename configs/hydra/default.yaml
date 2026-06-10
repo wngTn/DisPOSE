@@ -1,0 +1,29 @@
+# https://hydra.cc/docs/configure_hydra/intro/
+
+# enable color logging
+defaults:
+  - override hydra_logging: colorlog
+  - override job_logging: colorlog
+
+# Output directory, generated dynamically on each run. When resuming
+# (restore_from set), reuse that run's directory directly. The inner
+# ${oc.select:task,_} keeps the fallback resolvable when resuming without task=
+# on the CLI (oc.select evaluates its default eagerly, so ${task} must be guarded).
+run:
+  dir: ${oc.select:restore_from,${paths.log_dir}/${oc.select:task,_}/${task_name}}
+sweep:
+  dir: ${oc.select:restore_from,${paths.log_dir}/${oc.select:task,_}/${task_name}}/multiruns/${now:%Y-%m-%d}_${now:%H-%M-%S}
+  subdir: ${hydra.job.num}
+
+job_logging:
+  handlers:
+    file:
+      # Deterministic filename per run dir; archive any pre-existing run dir before re-running
+      # the same task_name to avoid overwriting logs.
+      filename: ${hydra.runtime.output_dir}/train.log
+      
+    # This new handler logs to the console
+    console:
+      class: logging.StreamHandler
+      formatter: colorlog
+      level: INFO

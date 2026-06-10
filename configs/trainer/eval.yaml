@@ -1,0 +1,11 @@
+_target_: lightning.Trainer
+
+accelerator: auto
+devices: 1
+strategy: auto
+
+# Deformable attention CUDA kernel doesn't support FP16
+precision: 32-true
+
+enable_progress_bar: true
+default_root_dir: ${paths.output_dir}

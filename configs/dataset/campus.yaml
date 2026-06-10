@@ -1,0 +1,61 @@
+# @package _global_
+
+defaults:
+  - /data: Campus
+
+camera_setup: "Campus3"
+
+# Campus pose is warm-started from the fully-trained panoptic_pose weights
+# (assignment + regressor; the backbone stays the dataset-adapted one below).
+# Strip out backbone.* keys from panoptic_pose `last.ckpt` and re-save before
+# resubmitting if you retrain panoptic_pose. The 15k step / 1e-4 LR / 500-step
+# warmup schedule below is sized for fine-tuning, not from-scratch.
+init_ckpt_path: "checkpoints/warmstart/panoptic_pose_no_backbone.pt"
+
+trainer:
+  max_steps: 15_000                              # warm-start schedule
+
+model:
+  warmup_steps: 500                              # shorter warmup; weights aren't random
+  scheduler:
+    T_max: 15_000                                # keep cosine in sync with trainer.max_steps
+
+  backbone:
+    # Fine-tuned from the panoptic backbone via `task=backbone dataset=campus`
+    # (last.ckpt at step 20000).
+    ckpt_path: "checkpoints/backbone/campus/pose_resnet50.pt"
+
+  # Campus is evaluated by PCP only. configs/model/Pose.yaml no longer defines
+  # default metrics — each dataset is fully in charge.
+  metric:
+    PCPMetrics:
+      _target_: src.metrics.PCPMetrics
+      skeleton_type: "campus"
+      num_actors: 3
+
+  space_configuration:
+    space_size: [12000, 12000, 2000]
+    space_center: [3000, 4500, 1000]
+
+data:
+  train_cfg:
+    batch_sampler:
+      batch_size: 4                              # per-GPU; 0.62x panoptic per-sample so fits at bs=4
+    dataset:
+      camera_setup: "${camera_setup}"
+      sequences: ["defalta"]
+
+  val_cfg:
+    dataset:
+      camera_setup: "${camera_setup}"
+      sequences: ["defalta"]
+
+logger:
+  tags: ["campus"]
+
+# task=pose: select best by PCP. task=backbone: ignored (task config overrides
+# this to save_top_k=0 + save_last=true).
+callbacks:
+  model_checkpoint:
+    monitor: "val/PCPMetrics_Average"
+    filename: "best-pcp-step={step:06d}"

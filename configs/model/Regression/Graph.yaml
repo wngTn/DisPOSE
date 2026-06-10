@@ -1,0 +1,29 @@
+_target_: src.models.nets.PoseRegressionNet
+space_configuration: "${model.space_configuration}"
+num_joints: 15
+max_instances: 10
+prior_noise_scale: 18.0
+prior_module:
+    _target_: src.models.regression.TPosePrior
+
+refine_module:
+    _target_: src.models.regression.GraphDecoder
+    d_model: 256
+    n_heads: 8
+    d_ffn: 1024
+    img_size: "${data.train_cfg.dataset.image_size}"
+    heatmap_size: "${data.train_cfg.dataset.heatmap_size}"
+    space_configuration: "${model.space_configuration}"
+    layers_attn_modes: [
+        ["node", "node"],
+        ["edge", "edge"],
+        ["node", "node"],
+        ["edge", "edge"]
+    ]
+    camera_setup: "${camera_setup}"
+    skeleton_type: "${data.train_cfg.dataset.skeleton_type}"
+    drop_path_rate: 0.0
+    dropout: 0.1
+    activation: "gelu"
+
+ckpt_path: null

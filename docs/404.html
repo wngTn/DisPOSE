@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>404 · DisPOSE</title>
+    <meta name="description" content="Page not found — DisPOSE project page." />
+    <meta name="robots" content="noindex" />
+
+    <link rel="icon" type="image/svg+xml" href="/DisPOSE/static/images/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+    <link rel="stylesheet" href="/DisPOSE/static/css/blog.css" />
+</head>
+
+<body>
+
+    <!-- Navbar (no theme toggle to keep page minimal; theme still respects localStorage) -->
+    <nav class="navbar" role="navigation" aria-label="main navigation">
+        <div class="navbar-inner">
+            <a href="/DisPOSE/" style="text-decoration:none; color:inherit;">
+                <span class="navbar-brand">Dis<span class="brand-accent">POSE</span></span>
+            </a>
+            <div class="navbar-links">
+                <a href="/DisPOSE/#contributions">Contributions</a>
+                <a href="/DisPOSE/#mm-or">MM-OR Pose</a>
+                <a href="/DisPOSE/#method">Method</a>
+                <a href="/DisPOSE/#results">Results</a>
+                <a href="/DisPOSE/#bibtex" class="always-show">BibTeX</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 404 message -->
+    <section class="section" style="padding-top: 14vh; padding-bottom: 14vh;">
+        <div class="container" style="text-align: center;">
+            <div style="font-size: clamp(5rem, 18vw, 9rem); font-weight: 700; color: var(--accent); line-height: 0.95; letter-spacing: -0.04em; font-variant-numeric: tabular-nums;">
+                404
+            </div>
+            <h2 style="margin: 14px 0 12px;">Page not found</h2>
+            <p style="color: var(--text-soft); max-width: 540px; margin: 0 auto 28px; text-align: center;">
+                The link you followed may be broken, or the page may have moved. Head back to the project page below.
+            </p>
+            <div class="publication-links" style="margin-top: 0;">
+                <a class="pub-btn" href="/DisPOSE/">
+                    <span class="icon">←</span><span>Back to DisPOSE</span>
+                </a>
+                <a class="pub-btn" href="https://github.com/wngTn/DisPOSE" target="_blank" rel="noopener noreferrer">
+                    <span class="icon">⌘</span><span>Code on GitHub</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>
+                Contact <a href="https://wngtn.github.io" target="_blank" rel="noopener noreferrer">Tony Danjun Wang</a>
+                &middot; <a href="mailto:tony.wang@tum.de">tony.wang@tum.de</a>
+            </p>
+        </div>
+    </footer>
+
+    <!-- Apply persisted theme without flicker -->
+    <script>
+        (() => {
+            const stored = localStorage.getItem("dispose-theme");
+            const theme = stored || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+            document.documentElement.setAttribute("data-theme", theme);
+        })();
+    </script>
+</body>
+
+</html>

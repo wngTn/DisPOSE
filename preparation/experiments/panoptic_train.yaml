@@ -1,0 +1,35 @@
+# Panoptic train-split pseudo-label generation (DisPOSE preparation).
+# Base parameters mirror COMPOSE's experiments/panoptic.yaml; the `train` split
+# selects exact-ILP matching (deterministic targets). generate.py injects
+# detections_path, sequences, and interval at runtime — sequences come from the
+# dataset spec and detections from the retained RT-DETR + ViTPose front-end.
+
+dataset: panoptic
+dataset_path: ./data/panoptic
+batch_size: 1
+cameras: CMU0
+N: 10
+J: 15
+
+hedge_conf_thresh: 0.4
+single_hedge_score: 1.0
+root_min_conf: 0.2
+triangulation_threshold: 0.3
+confidence_threshold: 0.3
+lam: 2.5
+score_joint_indices: [-1]
+
+cues:
+  - kind: geometric
+    name: reprojection
+    score_type: reprojection
+    lam: 0.01
+    pixel_threshold: 1024.0
+
+save_video: false
+
+splits:
+  train:
+    num_workers: 4
+    matching_solver: ilp
+    # detections_path / sequences / interval are injected by generate.py

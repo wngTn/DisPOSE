@@ -1,0 +1,70 @@
+# @package _global_
+
+defaults:
+  - /data: Panoptic
+
+camera_setup: "CMU0"
+
+trainer:
+  max_steps: 25_000                              # from-scratch training schedule
+
+model:
+  warmup_steps: 1_000
+  scheduler:
+    T_max: 25_000                                # keep cosine in sync with trainer.max_steps
+
+  backbone:
+    ckpt_path: "checkpoints/backbone/panoptic/pose_resnet50.pt"
+
+  # RootMetrics: assignment-decoded XYZ → MDE / MAP / Pseudo_mde / Pseudo_map / R@500.
+  # RegressionMetrics: refined poses → MPJPE / AP@{25..150} / R@500.
+  metric:
+    RootMetrics:
+      _target_: src.metrics.RootMetrics
+      root_idx: 2
+    RegressionMetrics:
+      _target_: src.metrics.RegressionMetrics
+
+  space_configuration:
+    space_size: [8000, 8000, 2000]
+    space_center: [0, -500, 800]
+
+data:
+  train_cfg:
+    batch_sampler:
+      batch_size: 2                              # per-GPU; ~32 GB / 46 GB at this batch
+    dataset:
+      camera_setup: "${camera_setup}"
+      sequences:
+        [
+          "160422_ultimatum1",
+          "160224_haggling1",
+          "160226_haggling1",
+          "161202_haggling1",
+          "160906_ian1",
+          "160906_ian2",
+          "160906_ian3",
+          "160906_band1",
+          "160906_band2",
+        ]
+
+  val_cfg:
+    dataset:
+      camera_setup: "${camera_setup}"
+      sequences:
+        [
+          "160906_pizza1",
+          "160422_haggling1",
+          "160906_ian5",
+          "160906_band4",
+        ]
+
+logger:
+  tags: ["panoptic"]
+
+# task=pose: select best by regression mAP. task=backbone: ignored (task config
+# overrides this to save_top_k=0 + save_last=true).
+callbacks:
+  model_checkpoint:
+    monitor: "val/RegressionMetrics_MAP"
+    filename: "best-map-step={step:06d}"

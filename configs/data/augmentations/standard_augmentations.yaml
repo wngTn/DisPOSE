@@ -1,0 +1,36 @@
+_target_: src.data.transforms.augmentation.RandAugmentation
+num_ops: 2   # 2 random ops per image -> moderate augmentation strength
+augmentations:
+  # --- Color / intensity jitter (important, but not crazy) ---
+  - _target_: src.data.transforms.augmentation.RandomColor
+    prob: 0.5
+    magnitude: 6       # slightly strong, but not max
+
+  - _target_: src.data.transforms.augmentation.RandomContrast
+    prob: 0.5
+    magnitude: 6
+
+  - _target_: src.data.transforms.augmentation.RandomBrightness
+    prob: 0.5
+    magnitude: 5       # brightness can break weak labels if too strong
+
+  - _target_: src.data.transforms.augmentation.RandomSharpness
+    prob: 0.5
+    magnitude: 5
+
+  # --- "Discrete" intensity ops, mid/low strength ---
+  - _target_: src.data.transforms.augmentation.RandomPosterize
+    prob: 0.5
+    magnitude: 4       # mid-range bits, less extreme artifacts
+
+  - _target_: src.data.transforms.augmentation.RandomAutoContrast
+    prob: 0.5
+    magnitude: 3
+
+  - _target_: src.data.transforms.augmentation.RandomEqualize
+    prob: 0.5
+    magnitude: 3
+
+  - _target_: src.data.transforms.augmentation.RandomCutout
+    prob: 0.5
+    magnitude: 7
